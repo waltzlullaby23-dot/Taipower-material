@@ -185,8 +185,8 @@
         </div>
 
         <div style="margin-top:10px">
-          <label>料號 (Part No.)（選填）</label>
-          <input type="text" id="partNo" placeholder="請輸入料號（選填，範例：T68-0001）" />
+          <label>料號 (No.10個數字)（選填）</label>
+          <input type="text" id="partNo" placeholder="請輸入料號（選填，範例：1102000021）" />
         </div>
 
         <select id="category" onchange="renderMaterials()" style="margin-top:10px">
@@ -246,7 +246,7 @@
       <div style="margin-top:18px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
         <div class="analysis-box">
           <h4>🔎 即時庫存查詢</h4>
-          <input type="text" id="queryPartNo" placeholder="輸入料號查詢庫存 (例：T68-0001)">
+          <input type="text" id="queryPartNo" placeholder="輸入料號查詢庫存 (例：1102000021)">
           <div style="display:flex; gap:8px; margin-top:8px;">
             <button class="material-btn" onclick="queryInventory()">查詢庫存</button>
             <button class="material-btn" onclick="openBaselineDialog()">設定/調整初始庫存</button>
@@ -826,3 +826,4 @@
 </script>
 </body>
 </html>
+
