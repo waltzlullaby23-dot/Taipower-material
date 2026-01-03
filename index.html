@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>材料管理系統</title>
+  <title>材料管理系統 - 完整版</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
@@ -75,6 +75,58 @@
       background-color: #1e6b40;
     }
 
+    /* Modal (彈窗) 樣式 */
+    .modal-overlay {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(5px);
+    }
+    .modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .modal-header {
+      font-size: 1.2rem;
+      font-weight: 900;
+      margin-bottom: 15px;
+      color: var(--ukiyo-deep-blue);
+      border-bottom: 2px solid var(--ukiyo-sky);
+      padding-bottom: 10px;
+    }
+    .modal-body {
+      margin-bottom: 20px;
+    }
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 5px;
+    }
+    .checkbox-item:hover { background: #f0f0f0; }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .btn-modal-cancel { background: #ccc; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .btn-modal-confirm { background: var(--excel-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
     /* UI 內容層 */
     .content-wrapper { 
       position: relative; z-index: 10; padding: 20px 16px 80px; 
@@ -120,8 +172,7 @@
     input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; box-sizing: border-box; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
     .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 15px; margin-bottom: 15px; }
-    .form-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; align-items: end; }
-
+    
     /* 按鈕樣式 */
     .btn-save { 
       width: 100%; padding: 15px; border: none; border-radius: 12px; 
@@ -170,12 +221,12 @@
     .status-low { background-color: var(--danger-red); }
     .status-warn { background-color: var(--warning-orange); }
 
-    /* 模式切換 Toggle */
+    /* 模式切換 Toggle (Updated for 3 items) */
     .mode-toggle {
       display: flex; background: #ddd; border-radius: 10px; padding: 5px; margin-bottom: 20px;
     }
     .mode-btn {
-      flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-weight: bold;
+      flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-weight: bold; font-size: 0.9rem;
     }
     .mode-btn.active { background: white; color: var(--ukiyo-deep-blue); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
@@ -187,18 +238,54 @@
     }
 
     @media (max-width: 600px) { 
-      .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; } 
+      .form-row, .form-row-3 { grid-template-columns: 1fr; } 
       .nav-tabs { gap: 5px; }
       .nav-btn { font-size: 0.9rem; padding: 8px; }
       .excel-btn span { display: none; }
+      .checkbox-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <button class="excel-btn" onclick="exportToExcel()">
-    📊 <span>匯出至 Excel</span>
+  <button class="excel-btn" onclick="openExportModal()">
+    📊 <span>匯出資料選擇</span>
   </button>
+
+  <div id="exportModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">匯出選項設定</div>
+      <div class="modal-body">
+        <div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+           <label style="font-weight:bold; display:block; margin-bottom:5px;">📅 日期範圍 (留空則匯出全部)</label>
+           <div style="display:flex; gap:10px;">
+             <input type="date" id="exportStart">
+             <span style="align-self:center;">~</span>
+             <input type="date" id="exportEnd">
+           </div>
+        </div>
+        
+        <label style="font-weight:bold; display:block; margin-bottom:10px;">📝 選擇要匯出的欄位：</label>
+        <div class="checkbox-grid">
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="date" checked> 異動日期</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="type" checked> 作業類型</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="orderNo" checked> 單號</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="partNo" checked> 料號</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="name" checked> 品名/規格</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="qty" checked> 數量</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="unit" checked> 單位</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="person" checked> 對象(人/單位/倉庫)</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="staff" checked> 經辦人</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="evalType"> 評價類型</label>
+          <label class="checkbox-item"><input type="checkbox" class="export-col" value="timestamp"> 紀錄時間戳記</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancel" onclick="closeExportModal()">取消</button>
+        <button class="btn-modal-confirm" onclick="confirmExport()">確認匯出 Excel</button>
+      </div>
+    </div>
+  </div>
 
   <div class="ukiyo-scene">
     <div class="mt-fuji"></div>
@@ -217,7 +304,7 @@
       <button class="nav-btn" onclick="switchTab('search')">🔍 歷史查詢</button>
       <button class="nav-btn" onclick="switchTab('inventory')">📦 即時庫存</button>
       <button class="nav-btn" onclick="switchTab('analysis')">📊 分析與預測</button>
-      <button class="nav-btn nav-btn-transfer" onclick="switchTab('transfer')">🚚 進貨/調撥</button>
+      <button class="nav-btn nav-btn-transfer" onclick="switchTab('transfer')">🚚 進貨/調撥/移轉</button>
     </div>
 
     <div id="tab-input" class="container-3d active">
@@ -333,11 +420,12 @@
     </div>
 
     <div id="tab-transfer" class="container-3d">
-      <h3 class="section-title">🚚 進貨入庫 / 單位間調撥</h3>
+      <h3 class="section-title">🚚 進貨 / 調撥 / 移轉</h3>
       
       <div class="mode-toggle">
         <div id="modeStockIn" class="mode-btn active" onclick="setTransferMode('stockin')">📥 進貨入庫 (廠商/總處)</div>
         <div id="modeTransfer" class="mode-btn" onclick="setTransferMode('transfer')">⇆ 單位間調撥</div>
+        <div id="modeWarehouse" class="mode-btn" onclick="setTransferMode('warehouse')">🏭 倉庫間移轉</div>
       </div>
 
       <div style="background: #eef2f5; padding: 20px; border-radius: 12px; border: 1px solid #ccc;">
@@ -375,6 +463,32 @@
             </div>
             <button class="btn-save" style="background: linear-gradient(45deg, #f7971e, #ffd200);" onclick="processTransfer()">⇆ 確認調撥</button>
         </div>
+
+        <div id="warehouseFields" style="display:none;">
+            <div class="form-row">
+                <div><label>目標/來源 倉庫名稱</label>
+                    <select id="warehouseTarget">
+                        <option value="21M1本庫倉">21M1本庫倉</option>
+                        <option value="21M6待修驗倉">21M6待修驗倉</option>
+                        <option value="21M2廢料倉">21M2廢料倉</option>
+                        <option value="21M3保留倉">21M3保留倉</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div><label>移轉類型</label>
+                    <select id="warehouseType">
+                        <option value="transfer_out">移出 (移至該倉 -)</option>
+                        <option value="transfer_in">移入 (從該倉移入 +)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div><label>移轉數量</label><input type="number" id="warehouseQty" min="1"></div>
+                <div><label>經辦人</label><input type="text" id="warehouseStaff"></div>
+            </div>
+            <button class="btn-save" style="background: linear-gradient(45deg, #4b6cb7, #182848);" onclick="processWarehouseTransfer()">🏭 確認移轉</button>
+        </div>
+
       </div>
     </div>
 
@@ -734,6 +848,7 @@ const rawData = {
   // --- 初始化與資料儲存 ---
   let records = JSON.parse(localStorage.getItem("taipower_v3") || "[]");
   let stockSettings = JSON.parse(localStorage.getItem("taipower_stock_settings_v3") || "{}");
+  let safetyStockSettings = JSON.parse(localStorage.getItem("taipower_safety_stock_v3") || "{}");
   
   let selectedItem = "";
   let selectedPartNo = "";
@@ -759,228 +874,156 @@ const rawData = {
     if(tabName === 'transfer') btns[4].classList.add('active');
   }
 
-  // --- 料號處理 (自動帶出) ---
+  // --- 料號輸入處理 ---
   function handlePartNoInput(val, mode) {
-    if (val.length === 10) {
+    if(val.length >= 8) {
       let found = null;
-      for (const cat in materialDict) {
-        found = materialDict[cat].find(i => i.startsWith(val));
-        if (found) {
-            if (mode === 'normal') {
-                document.getElementById("category").value = cat;
+      Object.values(materialDict).flat().forEach(item => {
+        if(item.startsWith(val)) found = item;
+      });
+      
+      if(found) {
+        if(mode === 'normal') {
+            selectMaterial(found);
+            // 自動切換到該類別
+            Object.keys(materialDict).forEach(key => {
+              if(materialDict[key].includes(found)) {
+                document.getElementById('category').value = key;
                 renderMaterials();
-                selectMaterial(found);
-            } else if (mode === 'transfer') {
-                document.getElementById("transferItemName").value = found.substring(11); // 去除料號顯示名稱
-                selectedPartNo = val;
-                selectedItem = found;
-            }
-            return;
+              }
+            });
+        } else if (mode === 'transfer') {
+            document.getElementById('transferItemName').value = found.substring(11);
         }
-      }
-      if (!found && mode === 'transfer') {
-        document.getElementById("transferItemName").value = "查無此料號";
-        selectedPartNo = "";
+      } else {
+        if(mode === 'transfer') document.getElementById('transferItemName').value = "查無此料號";
       }
     }
   }
 
-  // --- 一般領退料邏輯 ---
+  // --- 渲染材料列表 ---
   function renderMaterials() {
     const cat = document.getElementById("category").value;
-    const box = document.getElementById("materialsContainer");
-    box.innerHTML = "";
-    if (!cat) return;
+    const container = document.getElementById("materialsContainer");
+    container.innerHTML = "";
     
-    materialDict[cat].forEach(m => {
-      const btn = document.createElement("button");
-      btn.className = "material-btn";
-      btn.innerText = m;
-      btn.type = "button";
-      btn.onclick = () => selectMaterial(m);
-      if (selectedItem === m) btn.classList.add("active");
-      box.appendChild(btn);
+    if(!cat) {
+      container.innerHTML = `<div style="color:#888; text-align:center; padding:20px;">請選擇類別</div>`;
+      return;
+    }
+
+    materialDict[cat].forEach(item => {
+      const div = document.createElement("div");
+      div.className = "material-btn";
+      div.innerText = item;
+      div.onclick = () => selectMaterial(item, div);
+      container.appendChild(div);
     });
   }
 
-  function selectMaterial(item) {
-    selectedItem = item;
-    selectedPartNo = item.split(" ")[0];
-    document.getElementById("partNoInput").value = selectedPartNo;
+  function selectMaterial(itemText, element = null) {
+    selectedItem = itemText;
+    selectedPartNo = itemText.split(" ")[0]; // 擷取料號
+    
+    // 更新 UI
+    if(element) {
+        document.querySelectorAll(".material-btn").forEach(b => b.classList.remove("active"));
+        element.classList.add("active");
+    }
+    
     document.getElementById("qtySection").style.display = "block";
-    document.getElementById("unit").value = (item.includes("線") || item.includes("電纜")) ? "M" : "PC";
-    renderMaterials();
+    document.getElementById("partNoInput").value = selectedPartNo;
+    
+    // 自動判斷單位
+    let unit = "個";
+    if(itemText.includes("線") || itemText.includes("電纜")) unit = "公尺";
+    if(itemText.includes("油")) unit = "公升";
+    document.getElementById("unit").value = unit;
   }
 
+  // --- 表單提交 (領退料) ---
   document.getElementById("materialForm").onsubmit = function(e) {
     e.preventDefault();
-    const data = {
-      id: Date.now(),
+    if(!selectedItem) { alert("請選擇材料！"); return; }
+    
+    const record = {
       date: document.getElementById("mainDate").value,
       type: document.getElementById("transType").value,
       orderNo: document.getElementById("orderNo").value,
-      item: selectedItem,
-      partNo: selectedPartNo,
-      qty: parseInt(document.getElementById("qty").value),
-      unit: document.getElementById("unit").value,
       person: document.getElementById("personName").value,
       staff: document.getElementById("staffName").value,
-      eval: document.getElementById("evalType").value,
-      targetUnit: "-" // 一般領料無對方單位
+      partNo: selectedPartNo,
+      name: selectedItem.substring(11), // 去掉料號
+      qty: parseInt(document.getElementById("qty").value),
+      unit: document.getElementById("unit").value,
+      evalType: document.getElementById("evalType").value,
+      timestamp: new Date().getTime()
     };
-    saveRecord(data);
+    
+    saveRecord(record);
     this.reset();
     document.getElementById("qtySection").style.display = "none";
+    document.getElementById("category").value = "";
     document.getElementById("materialsContainer").innerHTML = '<div style="color:#888; text-align:center; padding:20px;">請先選擇類別或輸入料號</div>';
+    alert("✅ 紀錄已儲存！");
   };
 
-  // --- 進貨與調撥邏輯 ---
-  let transferMode = 'stockin';
-  
-  function setTransferMode(mode) {
-      transferMode = mode;
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-      if(mode === 'stockin') {
-          document.getElementById('modeStockIn').classList.add('active');
-          document.getElementById('stockInFields').style.display = 'block';
-          document.getElementById('transferFields').style.display = 'none';
-      } else {
-          document.getElementById('modeTransfer').classList.add('active');
-          document.getElementById('stockInFields').style.display = 'none';
-          document.getElementById('transferFields').style.display = 'block';
-      }
+  function saveRecord(record) {
+    records.push(record);
+    localStorage.setItem("taipower_v3", JSON.stringify(records));
   }
 
-  function processStockIn() {
-      const pNo = document.getElementById('transferPartNo').value;
-      const qty = document.getElementById('stockInQty').value;
-      const order = document.getElementById('transferOrderNo').value;
-      const staff = document.getElementById('stockInStaff').value;
-      
-      if(!pNo || !qty || !order || !staff || !selectedItem) {
-          alert("請填寫所有必填欄位 (單號、料號、數量、經辦人)");
-          return;
-      }
-      
-      const data = {
-          id: Date.now(),
-          date: document.getElementById("transferDate").value,
-          type: "進貨", // 增加庫存
-          orderNo: order,
-          item: selectedItem,
-          partNo: pNo,
-          qty: parseInt(qty),
-          unit: (selectedItem.includes("線") ? "M" : "PC"),
-          person: "廠商/總處",
-          staff: staff,
-          eval: "0新",
-          targetUnit: "廠商/總處"
-      };
-      
-      saveRecord(data);
-      // 清空輸入
-      document.getElementById('stockInQty').value = '';
-      document.getElementById('transferPartNo').value = '';
-      document.getElementById('transferItemName').value = '';
-      selectedItem = "";
-  }
-
-  function processTransfer() {
-      const pNo = document.getElementById('transferPartNo').value;
-      const qty = document.getElementById('transferQty').value;
-      const order = document.getElementById('transferOrderNo').value;
-      const staff = document.getElementById('transferStaff').value;
-      const target = document.getElementById('transferTargetUnit').value;
-      const typeVal = document.getElementById('transferType').value; // transfer_in or transfer_out
-
-      if(!pNo || !qty || !order || !staff || !target || !selectedItem) {
-          alert("請填寫所有必填欄位");
-          return;
-      }
-
-      const typeStr = (typeVal === 'transfer_in') ? "調撥入" : "調撥出";
-      
-      const data = {
-          id: Date.now(),
-          date: document.getElementById("transferDate").value,
-          type: typeStr,
-          orderNo: order,
-          item: selectedItem,
-          partNo: pNo,
-          qty: parseInt(qty),
-          unit: (selectedItem.includes("線") ? "M" : "PC"),
-          person: target, // 調撥對象
-          staff: staff,
-          eval: "待確認",
-          targetUnit: target
-      };
-
-      saveRecord(data);
-      // 清空
-      document.getElementById('transferQty').value = '';
-      document.getElementById('transferPartNo').value = '';
-      document.getElementById('transferItemName').value = '';
-      selectedItem = "";
-  }
-
-  function saveRecord(data) {
-      records.unshift(data);
-      localStorage.setItem("taipower_v3", JSON.stringify(records));
-      alert("✅ 交易已入帳！庫存已更新。");
-  }
-
-  // --- 歷史查詢 ---
+  // --- 搜尋功能 ---
   function filterRecords() {
     const pName = document.getElementById("searchPerson").value.toLowerCase();
-    const staff = document.getElementById("searchStaff").value.toLowerCase();
-    const pNo = document.getElementById("searchPartNo").value;
-    const month = document.getElementById("searchMonth").value;
+    const sStaff = document.getElementById("searchStaff").value.toLowerCase();
+    const sPart = document.getElementById("searchPartNo").value;
+    const sMonth = document.getElementById("searchMonth").value;
     
     const list = document.getElementById("logList");
     list.innerHTML = "";
     
-    const filtered = records.filter(r => {
-      const matchName = !pName || (r.person && r.person.toLowerCase().includes(pName));
-      const matchStaff = !staff || (r.staff && r.staff.toLowerCase().includes(staff));
-      const matchPart = !pNo || r.partNo.includes(pNo);
-      const matchDate = !month || r.date.startsWith(month);
-      return matchName && matchStaff && matchPart && matchDate;
+    let filtered = records.filter(r => {
+      let match = true;
+      if(pName && !r.person.toLowerCase().includes(pName)) match = false;
+      if(sStaff && (!r.staff || !r.staff.toLowerCase().includes(sStaff))) match = false;
+      if(sPart && !r.partNo.includes(sPart)) match = false;
+      if(sMonth && !r.date.startsWith(sMonth)) match = false;
+      return match;
     });
 
+    // 排序：新到舊
+    filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+
     if(filtered.length === 0) {
-      list.innerHTML = "<div style='text-align:center; color:#666;'>無符合紀錄</div>";
-      return;
+        list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>查無資料</div>";
+        return;
     }
 
-    filtered.forEach(r => {
+    filtered.forEach((r, index) => {
       const div = document.createElement("div");
       div.className = "record-li";
+      // 根據類型顯示不同顏色標籤
+      let typeColor = "#666";
+      if(r.type === '領料') typeColor = "#d64545"; // 紅
+      else if(r.type === '退料' || r.type === '進貨') typeColor = "#2ecc71"; // 綠
+      else if(r.type === '單位調撥' || r.type === '倉庫移轉') typeColor = "#f39c12"; // 橘
       
-      let badgeColor = "#2A587A";
-      if(r.type === '退料' || r.type === '進貨' || r.type === '調撥入') badgeColor = "#2ecc71"; // Green
-      if(r.type === '調撥出') badgeColor = "#e67e22"; // Orange
-
       div.innerHTML = `
-        <button class="btn-delete" onclick="deleteRecord(${r.id})">刪除</button>
-        <div><span style="background:${badgeColor}; color:white; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${r.type}</span> 
-        <strong>${r.date}</strong> | 單號: ${r.orderNo}</div>
-        <div style="margin:5px 0; font-weight:bold; color:#1D3B56;">${r.item}</div>
-        <div style="font-size:0.9rem; color:#555;">
-          數量: <strong>${r.qty}</strong> ${r.unit} | 對象: ${r.person} | 經辦: ${r.staff}
-          ${r.targetUnit && r.targetUnit !== '-' ? `<br>對方單位: ${r.targetUnit}` : ''}
+        <div style="font-weight:bold; color:var(--ukiyo-deep-blue); margin-bottom:5px;">
+           <span style="background:${typeColor}; color:white; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${r.type}</span> 
+           ${r.date} - ${r.partNo}
         </div>
+        <div style="font-size:0.95rem; color:#333;">${r.name}</div>
+        <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.9rem; color:#555;">
+           <span>數量: <strong>${r.qty}</strong> ${r.unit || ''}</span>
+           <span>對象: ${r.person}</span>
+        </div>
+        <div style="font-size:0.85rem; color:#888; margin-top:4px;">單號: ${r.orderNo} | 經辦: ${r.staff || '-'}</div>
+        <button class="btn-delete" onclick="deleteRecord(${r.timestamp})">刪除</button>
       `;
       list.appendChild(div);
     });
-  }
-
-  function deleteRecord(id) {
-    if(confirm("確定要刪除這筆紀錄嗎？(庫存將會復原)")) {
-      records = records.filter(r => r.id !== id);
-      localStorage.setItem("taipower_v3", JSON.stringify(records));
-      filterRecords();
-      renderInventoryTable(); // 若在庫存頁也要刷新
-    }
   }
   
   function clearFilters() {
@@ -991,171 +1034,368 @@ const rawData = {
       filterRecords();
   }
 
-  // --- 庫存計算核心邏輯 ---
-  function getStockStatus(partNo) {
-    const setting = stockSettings[partNo] || { initial: 0, safety: 0 };
-    let current = parseInt(setting.initial);
-    let changeLog = 0;
-    
+  function deleteRecord(ts) {
+    if(confirm("確定要刪除此筆紀錄嗎？(刪除後無法復原，會影響庫存)")) {
+      records = records.filter(r => r.timestamp !== ts);
+      localStorage.setItem("taipower_v3", JSON.stringify(records));
+      filterRecords();
+      renderInventoryTable(); // 若在庫存頁面也要更新
+    }
+  }
+
+  // --- 庫存計算與渲染 ---
+  function calculateStock(partNo) {
+    let current = stockSettings[partNo] || 0;
     records.forEach(r => {
-      if (r.partNo === partNo) {
-        if (['領料', '借用', '調撥出'].includes(r.type)) {
-           current -= r.qty;
-           changeLog -= r.qty;
-        } else if (['退料', '進貨', '調撥入'].includes(r.type)) {
-           current += r.qty;
-           changeLog += r.qty;
+      if(r.partNo === partNo) {
+        if(r.type === '領料' || r.type === '借用') {
+            current -= r.qty;
+        } else if (r.type === '退料' || r.type === '進貨') {
+            current += r.qty;
+        } else if (r.type === '單位調撥' || r.type === '倉庫移轉') {
+            // 調撥/移轉 需看 action
+            if(r.action === 'transfer_in') current += r.qty;
+            else if(r.action === 'transfer_out') current -= r.qty;
         }
       }
     });
-    
-    return {
-      current: current,
-      initial: setting.initial,
-      change: changeLog,
-      safety: setting.safety
-    };
-  }
-
-  // --- 庫存與分析表渲染 ---
-  function renderInventoryTable() {
-    const tbody = document.getElementById("inventoryBody");
-    tbody.innerHTML = "";
-    const filter = document.getElementById("filterStockInput").value.toLowerCase();
-    
-    // 取得所有出現過的料號 (包含設定過庫存的 或 有交易紀錄的)
-    const allPartNos = new Set([...Object.keys(stockSettings), ...records.map(r => r.partNo)]);
-    
-    allPartNos.forEach(pNo => {
-      // 找出名稱 (從交易紀錄或設定中很難找，需從 rawData 找)
-      let name = "未知材料";
-      // 嘗試搜尋
-      for(const cat in materialDict) {
-          const found = materialDict[cat].find(i => i.startsWith(pNo));
-          if(found) { name = found.substring(11); break; } // 去除料號
-      }
-      
-      if(filter && !pNo.includes(filter) && !name.includes(filter)) return;
-
-      const status = getStockStatus(pNo);
-      
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${pNo}</td>
-        <td>${name}</td>
-        <td>${status.initial}</td>
-        <td style="color:${status.change >= 0 ? 'green' : 'red'}">${status.change > 0 ? '+'+status.change : status.change}</td>
-        <td style="font-weight:bold; font-size:1.1rem;">${status.current}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+    return current;
   }
 
   function setInitialStock() {
-    const pNo = document.getElementById("stockPartNo").value;
-    const qty = document.getElementById("stockInitQty").value;
-    if(!pNo || !qty) return alert("請輸入完整資料");
-    
-    if(!stockSettings[pNo]) stockSettings[pNo] = { initial: 0, safety: 0 };
-    stockSettings[pNo].initial = parseInt(qty);
-    localStorage.setItem("taipower_stock_settings_v3", JSON.stringify(stockSettings));
-    alert("初始庫存已設定");
-    renderInventoryTable();
+    const pn = document.getElementById("stockPartNo").value;
+    const q = parseInt(document.getElementById("stockInitQty").value);
+    if(pn && !isNaN(q)) {
+        stockSettings[pn] = q;
+        localStorage.setItem("taipower_stock_settings_v3", JSON.stringify(stockSettings));
+        alert(`已設定料號 ${pn} 初始庫存為 ${q}`);
+        document.getElementById("stockPartNo").value = "";
+        document.getElementById("stockInitQty").value = "";
+        renderInventoryTable();
+    } else {
+        alert("請輸入完整料號與數量");
+    }
   }
 
-  function setSafetyStock() {
-    const pNo = document.getElementById("safePartNo").value;
-    const qty = document.getElementById("safeQty").value;
-    if(!pNo || !qty) return alert("請輸入完整資料");
+  function renderInventoryTable() {
+    const tbody = document.getElementById("inventoryBody");
+    tbody.innerHTML = "";
     
-    if(!stockSettings[pNo]) stockSettings[pNo] = { initial: 0, safety: 0 };
-    stockSettings[pNo].safety = parseInt(qty);
-    localStorage.setItem("taipower_stock_settings_v3", JSON.stringify(stockSettings));
-    alert("安全存量預警已設定");
-    renderAnalysisReport();
+    // 找出所有出現過的料號 (包含設定過初始值的，與交易紀錄中的)
+    const allParts = new Set([...Object.keys(stockSettings), ...records.map(r => r.partNo)]);
+    const filterTxt = document.getElementById("filterStockInput").value.toLowerCase();
+
+    allParts.forEach(pn => {
+        // 查找品名
+        let name = "未知品名";
+        Object.values(materialDict).flat().forEach(item => {
+            if(item.startsWith(pn)) name = item.substring(11);
+        });
+
+        if(filterTxt && !pn.includes(filterTxt) && !name.includes(filterTxt)) return;
+
+        const init = stockSettings[pn] || 0;
+        let change = 0;
+        records.forEach(r => {
+            if(r.partNo === pn) {
+                if(r.type === '領料' || r.type === '借用') change -= r.qty;
+                else if(r.type === '退料' || r.type === '進貨') change += r.qty;
+                else if(r.type === '單位調撥' || r.type === '倉庫移轉') {
+                    if(r.action === 'transfer_in') change += r.qty;
+                    else change -= r.qty;
+                }
+            }
+        });
+
+        const current = init + change;
+        
+        // 庫存狀態燈號
+        let statusHtml = `<span class="status-badge status-ok">充足</span>`;
+        if(current <= 0) statusHtml = `<span class="status-badge status-low">缺料</span>`;
+        else if(current < 5) statusHtml = `<span class="status-badge status-warn">偏低</span>`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${pn}</td>
+            <td>${name}</td>
+            <td>${init}</td>
+            <td style="color:${change >=0 ? 'green':'red'}">${change >0?'+':''}${change}</td>
+            <td style="font-weight:bold; font-size:1.1rem;">${current} ${statusHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+  }
+
+  // --- 分析報告 (存貨預警) ---
+  function setSafetyStock() {
+      const pn = document.getElementById("safePartNo").value;
+      const q = parseInt(document.getElementById("safeQty").value);
+      if(pn && !isNaN(q)) {
+          safetyStockSettings[pn] = q;
+          localStorage.setItem("taipower_safety_stock_v3", JSON.stringify(safetyStockSettings));
+          alert(`已設定料號 ${pn} 安全存量為 ${q}`);
+          renderAnalysisReport();
+      } else {
+          alert("請輸入正確料號與數值");
+      }
   }
 
   function renderAnalysisReport() {
-    const container = document.getElementById("analysisReport");
-    container.innerHTML = "";
-    
-    let hasAlert = false;
-    Object.keys(stockSettings).forEach(pNo => {
-        if(stockSettings[pNo].safety > 0) {
-            const status = getStockStatus(pNo);
-            if(status.current < stockSettings[pNo].safety) {
-                hasAlert = true;
-                // 找名字
-                let name = pNo;
-                for(const cat in materialDict) {
-                    const found = materialDict[cat].find(i => i.startsWith(pNo));
-                    if(found) name = found;
-                }
-                
-                const div = document.createElement("div");
-                div.style.background = "#fff";
-                div.style.borderLeft = "5px solid red";
-                div.style.padding = "15px";
-                div.style.marginBottom = "10px";
-                div.style.borderRadius = "8px";
-                div.innerHTML = `
-                    <h4 style="margin:0; color:#d64545;">⚠️ 庫存不足警報</h4>
-                    <p style="margin:5px 0;"><strong>${name}</strong></p>
-                    <p>目前庫存: <strong style="font-size:1.2rem">${status.current}</strong> (安全存量: ${status.safety})</p>
-                    <p style="font-size:0.9rem; color:#666;">建議儘速請購或調撥。</p>
-                `;
-                container.appendChild(div);
-            }
-        }
-    });
-    
-    if(!hasAlert) {
-        container.innerHTML = "<div style='text-align:center; padding:30px; color:#2ecc71; font-weight:bold; font-size:1.2rem;'>✅ 目前所有材料庫存皆安全</div>";
-    }
+      const div = document.getElementById("analysisReport");
+      div.innerHTML = "";
+      
+      // 計算所有庫存
+      const allParts = new Set([...Object.keys(stockSettings), ...records.map(r => r.partNo)]);
+      let warnings = [];
+
+      allParts.forEach(pn => {
+          const current = calculateStock(pn);
+          const safe = safetyStockSettings[pn] || 0; // 預設0表示未設定
+          
+          if(safe > 0 && current < safe) {
+              // 查找品名
+              let name = "未知品名";
+              Object.values(materialDict).flat().forEach(item => {
+                  if(item.startsWith(pn)) name = item.substring(11);
+              });
+              
+              warnings.push({ pn, name, current, safe });
+          }
+      });
+
+      if(warnings.length === 0) {
+          div.innerHTML = `<div style="text-align:center; padding:30px; color:green; font-weight:bold;">✅ 目前無低於安全存量之物料</div>`;
+      } else {
+          warnings.forEach(w => {
+              const itemDiv = document.createElement("div");
+              itemDiv.style.background = "#fff";
+              itemDiv.style.borderLeft = "5px solid red";
+              itemDiv.style.padding = "15px";
+              itemDiv.style.marginBottom = "10px";
+              itemDiv.style.borderRadius = "8px";
+              itemDiv.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+              
+              itemDiv.innerHTML = `
+                  <div style="font-weight:bold; color:#d64545; font-size:1.1rem;">🚨 庫存不足警報</div>
+                  <div style="margin:5px 0;">料號：${w.pn}</div>
+                  <div style="margin:5px 0;">品名：${w.name}</div>
+                  <div style="display:flex; gap:15px; margin-top:10px;">
+                      <span style="background:#eee; padding:5px 10px; border-radius:5px;">目前庫存: <strong>${w.current}</strong></span>
+                      <span style="background:#ffeaea; color:red; padding:5px 10px; border-radius:5px;">安全存量: <strong>${w.safe}</strong></span>
+                  </div>
+              `;
+              div.appendChild(itemDiv);
+          });
+      }
   }
 
-  // --- 匯出 Excel 功能 ---
-  function exportToExcel() {
-    if(records.length === 0) {
-      alert("目前沒有任何紀錄可匯出！");
+  // --- 進貨/調撥/移轉 邏輯 ---
+  let transferMode = 'stockin'; // 'stockin', 'transfer', 'warehouse'
+
+  function setTransferMode(mode) {
+      transferMode = mode;
+      
+      // 切換按鈕樣式
+      document.getElementById("modeStockIn").classList.remove("active");
+      document.getElementById("modeTransfer").classList.remove("active");
+      document.getElementById("modeWarehouse").classList.remove("active");
+      
+      if(mode === 'stockin') document.getElementById("modeStockIn").classList.add("active");
+      if(mode === 'transfer') document.getElementById("modeTransfer").classList.add("active");
+      if(mode === 'warehouse') document.getElementById("modeWarehouse").classList.add("active");
+      
+      // 切換顯示區域
+      document.getElementById("stockInFields").style.display = (mode === 'stockin') ? "block" : "none";
+      document.getElementById("transferFields").style.display = (mode === 'transfer') ? "block" : "none";
+      document.getElementById("warehouseFields").style.display = (mode === 'warehouse') ? "block" : "none";
+  }
+
+  // 1. 進貨入庫處理
+  function processStockIn() {
+      const orderNo = document.getElementById("transferOrderNo").value;
+      const partNo = document.getElementById("transferPartNo").value;
+      const name = document.getElementById("transferItemName").value;
+      const qty = document.getElementById("stockInQty").value;
+      const staff = document.getElementById("stockInStaff").value;
+      const date = document.getElementById("transferDate").value;
+
+      if(!orderNo || !partNo || !qty || !staff) { alert("請填寫所有欄位"); return; }
+      if(name === "查無此料號" || name === "") { alert("料號錯誤"); return; }
+
+      const record = {
+          date: date,
+          type: '進貨',
+          action: 'stockin', // 識別碼
+          orderNo: orderNo,
+          person: '廠商/總處',
+          staff: staff,
+          partNo: partNo,
+          name: name,
+          qty: parseInt(qty),
+          unit: '個', // 簡化處理
+          evalType: '0新', // 進貨預設為新
+          timestamp: new Date().getTime()
+      };
+      
+      saveRecord(record);
+      alert("✅ 進貨入庫成功！");
+      document.getElementById("stockInQty").value = "";
+      document.getElementById("transferPartNo").value = "";
+      document.getElementById("transferItemName").value = "";
+  }
+
+  // 2. 單位調撥處理
+  function processTransfer() {
+      const orderNo = document.getElementById("transferOrderNo").value;
+      const partNo = document.getElementById("transferPartNo").value;
+      const name = document.getElementById("transferItemName").value;
+      const targetUnit = document.getElementById("transferTargetUnit").value;
+      const type = document.getElementById("transferType").value; // transfer_in or transfer_out
+      const qty = document.getElementById("transferQty").value;
+      const staff = document.getElementById("transferStaff").value;
+      const date = document.getElementById("transferDate").value;
+
+      if(!orderNo || !partNo || !qty || !staff || !targetUnit) { alert("請填寫所有欄位"); return; }
+      
+      const record = {
+          date: date,
+          type: '單位調撥',
+          action: type, // 重要：用於計算庫存加減
+          orderNo: orderNo,
+          person: targetUnit, // 對象變成單位
+          staff: staff,
+          partNo: partNo,
+          name: name,
+          qty: parseInt(qty),
+          unit: '個',
+          evalType: '調撥',
+          timestamp: new Date().getTime()
+      };
+
+      saveRecord(record);
+      alert("✅ 單位調撥單已建立！");
+      document.getElementById("transferQty").value = "";
+  }
+
+  // 3. 倉庫移轉處理 (新增功能)
+  function processWarehouseTransfer() {
+      const orderNo = document.getElementById("transferOrderNo").value;
+      const partNo = document.getElementById("transferPartNo").value;
+      const name = document.getElementById("transferItemName").value;
+      const warehouse = document.getElementById("warehouseTarget").value;
+      const type = document.getElementById("warehouseType").value; // transfer_in or transfer_out
+      const qty = document.getElementById("warehouseQty").value;
+      const staff = document.getElementById("warehouseStaff").value;
+      const date = document.getElementById("transferDate").value;
+
+      if(!orderNo || !partNo || !qty || !staff) { alert("請填寫所有欄位"); return; }
+      
+      const record = {
+          date: date,
+          type: '倉庫移轉',
+          action: type, // 用於計算庫存加減
+          orderNo: orderNo,
+          person: warehouse, // 對象變成倉庫名稱
+          staff: staff,
+          partNo: partNo,
+          name: name,
+          qty: parseInt(qty),
+          unit: '個',
+          evalType: '移轉',
+          timestamp: new Date().getTime()
+      };
+
+      saveRecord(record);
+      alert("✅ 倉庫移轉單已建立！");
+      document.getElementById("warehouseQty").value = "";
+  }
+
+  // --- Excel 匯出相關功能 (Modal & Selection) ---
+  function openExportModal() {
+    document.getElementById("exportModal").style.display = "flex";
+  }
+
+  function closeExportModal() {
+    document.getElementById("exportModal").style.display = "none";
+  }
+
+  function confirmExport() {
+    // 1. 取得勾選的欄位
+    const checkboxes = document.querySelectorAll('.export-col:checked');
+    const selectedFields = Array.from(checkboxes).map(cb => cb.value);
+    
+    if(selectedFields.length === 0) {
+      alert("請至少選擇一個匯出欄位！");
       return;
     }
 
-    // 1. 準備資料
-    const exportData = records.map(r => ({
-      "異動日期": r.date,
-      "單號": r.orderNo,
-      "作業類型": r.type,
-      "料號": r.partNo,
-      "品名規格": r.item.substring(11), // 去除前面的料號
-      "數量": r.qty,
-      "單位": r.unit,
-      "對象/單位": r.person, // 包含廠商或對方單位
-      "經辦人": r.staff,
-      "評價": r.eval
-    }));
+    // 2. 取得日期範圍
+    const startDate = document.getElementById("exportStart").value;
+    const endDate = document.getElementById("exportEnd").value;
 
-    // 2. 建立 Worksheet
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    // 3. 欄位標題對照表 (Key -> 中文標題)
+    const headerMap = {
+      date: "異動日期",
+      type: "作業類型",
+      orderNo: "單號",
+      partNo: "料號",
+      name: "品名/規格",
+      qty: "數量",
+      unit: "單位",
+      person: "對象",
+      staff: "經辦人",
+      evalType: "評價類型",
+      timestamp: "系統時間戳"
+    };
 
-    // 3. 建立 Workbook
+    // 4. 篩選資料
+    let dataToExport = records;
+
+    // 4a. 日期篩選
+    if (startDate || endDate) {
+        dataToExport = dataToExport.filter(r => {
+            const rDate = new Date(r.date);
+            const start = startDate ? new Date(startDate) : new Date('1900-01-01');
+            const end = endDate ? new Date(endDate) : new Date('2100-12-31');
+            return rDate >= start && rDate <= end;
+        });
+    }
+
+    if(dataToExport.length === 0) {
+        alert("此條件範圍內無資料可匯出");
+        return;
+    }
+
+    // 5. 轉換資料格式 (只保留選取的欄位)
+    const finalData = dataToExport.map(record => {
+      let newRow = {};
+      selectedFields.forEach(field => {
+        newRow[headerMap[field]] = record[field] || "";
+      });
+      return newRow;
+    });
+
+    // 6. 執行匯出
+    const ws = XLSX.utils.json_to_sheet(finalData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "材料異動紀錄");
-
-    // 4. 下載檔案
-    const fileName = `材料管理系統匯出_${new Date().toISOString().slice(0,10)}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    XLSX.utils.book_append_sheet(wb, ws, "材料紀錄");
+    XLSX.writeFile(wb, `材料管理報表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    
+    closeExportModal();
   }
 
-  // 簽名檔
+  // 點擊 Modal 外部關閉
+  window.onclick = function(event) {
+    const modal = document.getElementById("exportModal");
+    if (event.target == modal) {
+      closeExportModal();
+    }
+  }
+
   function toggleSignature(el) {
     const span = document.getElementById('sigName');
     span.hidden = !span.hidden;
   }
-  
-  // 初始化
-  filterRecords();
 </script>
-
 </body>
 </html>
