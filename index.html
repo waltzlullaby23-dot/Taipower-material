@@ -1,95 +1,18 @@
 <!DOCTYPE html>
+
 <html lang="zh-Hant">
+
 <head>
+
   <meta charset="UTF-8" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>材料管理系統</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet" />
+
+  <title>材料管理系統 </title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@600;900&display=swap" rel="stylesheet" />
+
   <style>
-    :root {
-      --ukiyo-red: #bc002d; /* 日本紅 */
-      --ukiyo-gold: #d4af37; /* 金箔色 */
-      --ukiyo-navy: #002b5b; /* 靛青色 */
-    }
-
-    body {
-      background-color: #f4ece1; /* 和紙底色 */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .title-container {
-      text-align: center;
-      position: relative;
-    }
-
-    /* 浮世繪風格文字 */
-    .ukiyo-title {
-      font-family: 'Noto Sans TC', sans-serif;
-      font-weight: 900;
-      font-size: 5rem;
-      color: var(--ukiyo-navy);
-      margin: 0;
-      padding: 20px;
-      position: relative;
-      display: inline-block;
-      
-      /* 文字陰影營造版畫疊印感 */
-      text-shadow: 
-        3px 3px 0px var(--ukiyo-gold),
-        -1px -1px 0px #fff;
-      
-      /* 讓文字帶點刷墨感 */
-      background: linear-gradient(180deg, var(--ukiyo-navy) 0%, #1a1a1a 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      
-      letter-spacing: 5px;
-    }
-
-    /* 裝飾性波浪符號 (模擬浮世繪海浪) */
-    .ukiyo-title::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 10%;
-      width: 80%;
-      height: 10px;
-      background: repeating-linear-gradient(
-        45deg,
-        var(--ukiyo-red),
-        var(--ukiyo-red) 10px,
-        transparent 10px,
-        transparent 20px
-      );
-      opacity: 0.6;
-    }
-
-    /* 模擬朱印 */
-    .seal {
-      display: inline-block;
-      border: 3px solid var(--ukiyo-red);
-      color: var(--ukiyo-red);
-      padding: 5px;
-      font-weight: bold;
-      margin-left: 15px;
-      writing-mode: vertical-rl;
-      font-size: 1.2rem;
-      vertical-align: middle;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="title-container">
-    <h1 class="ukiyo-title">材料管理系統<span class="seal">管理之印</span></h1>
-  </div>
-
-</body>
-</html>
     :root {
       --ukiyo-deep-blue: #1D3B56;
       --ukiyo-mid-blue: #2A587A;
@@ -1189,3 +1112,4 @@ const rawData = {
     filtered.forEach(r => {
       list.innerHTML += `
         <d
+
