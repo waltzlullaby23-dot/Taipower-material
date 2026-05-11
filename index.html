@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -7,8 +6,7 @@
   <title>材料管理系統</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+  <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
   
   <style>
     :root {
@@ -50,103 +48,169 @@
       border-left: 150px solid transparent; border-right: 150px solid transparent;
       border-bottom: 200px solid #2c3e50;
     }
-    .wave { position: absolute; bottom: 0; width: 200%; height: 100%; background-repeat: repeat-x; background-position: bottom; }
-    .wave-back { z-index: 2; height: 45%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 180' preserveAspectRatio='none'%3E%3Cpath d='M0,120 C150,150 250,80 400,110 C550,140 650,80 800,110 L800,180 L0,180 Z' fill='%232A587A' opacity='0.8'/%3E%3C/svg%3E"); animation: moveWave 25s linear infinite; }
-    .wave-mid { z-index: 3; height: 40%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 180' preserveAspectRatio='none'%3E%3Cpath d='M0,100 C200,60 350,140 600,80 C750,40 800,100 800,100 L800,180 L0,180 Z' fill='%236B93B8' opacity='0.9'/%3E%3C/svg%3E"); animation: moveWave 15s linear infinite reverse; }
-    .wave-front { z-index: 4; height: 35%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%231D3B56' fill-opacity='1' d='M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E"); animation: moveWave 10s linear infinite; }
-    @keyframes moveWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    .wave { position: absolute; bottom: 0; width: 200%; height: 100%; background-repeat: repeat-x; background-position: bottom;
+    }
+    .wave-back { z-index: 2; height: 45%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 180' preserveAspectRatio='none'%3E%3Cpath d='M0,120 C150,150 250,80 400,110 C550,140 650,80 800,110 L800,180 L0,180 Z' fill='%232A587A' opacity='0.8'/%3E%3C/svg%3E");
+      animation: moveWave 25s linear infinite; }
+    .wave-mid { z-index: 3; height: 40%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 180' preserveAspectRatio='none'%3E%3Cpath d='M0,100 C200,60 350,140 600,80 C750,40 800,100 800,100 L800,180 L0,180 Z' fill='%236B93B8' opacity='0.9'/%3E%3C/svg%3E");
+      animation: moveWave 15s linear infinite reverse; }
+    .wave-front { z-index: 4; height: 35%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%231D3B56' fill-opacity='1' d='M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E"); animation: moveWave 10s linear infinite;
+    }
+    @keyframes moveWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%);
+    } }
 
     /* Excel 匯出按鈕 */
     .excel-btn {
-      position: fixed; top: 20px; left: 20px; z-index: 1000;
+      position: fixed;
+      top: 20px; left: 20px; z-index: 1000;
       background-color: var(--excel-green); color: white; border: 2px solid white;
       padding: 10px 20px; border-radius: 30px;
       font-weight: 900; cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;
     }
-    .excel-btn:hover { transform: scale(1.05); background-color: #1e6b40; }
+    .excel-btn:hover { transform: scale(1.05); background-color: #1e6b40;
+    }
 
     /* Modal */
     .modal-overlay {
-      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center;
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center;
+      align-items: center;
       backdrop-filter: blur(5px); padding: 10px; box-sizing: border-box;
     }
     .modal-content {
-      background: white; padding: 25px; border-radius: 15px; width: 100%; max-width: 500px;
+      background: white;
+      padding: 25px; border-radius: 15px; width: 100%; max-width: 500px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; max-height: 90vh; overflow-y: auto;
     }
-    .modal-header { font-size: 1.2rem; font-weight: 900; margin-bottom: 15px; color: var(--ukiyo-deep-blue); border-bottom: 2px solid var(--ukiyo-sky); padding-bottom: 10px; }
+    .modal-header { font-size: 1.2rem; font-weight: 900; margin-bottom: 15px; color: var(--ukiyo-deep-blue); border-bottom: 2px solid var(--ukiyo-sky); padding-bottom: 10px;
+    }
     .modal-body { margin-bottom: 20px; }
-    .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .checkbox-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 5px; border-radius: 5px; }
+    .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 5px; border-radius: 5px;
+    }
     .checkbox-item:hover { background: #f0f0f0; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
-    .btn-modal-cancel { background: #ccc; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .btn-modal-confirm { background: var(--excel-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px;
+    }
+    .btn-modal-cancel { background: #ccc; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;
+      font-weight: bold; }
+    .btn-modal-confirm { background: var(--excel-green); color: white; border: none; padding: 10px 20px; border-radius: 8px;
+      cursor: pointer; font-weight: bold; }
 
     /* UI 內容層 */
-    .content-wrapper { position: relative; z-index: 10; padding: 20px 16px 80px; max-width: 950px; margin: 0 auto; }
-    header { background: var(--ukiyo-deep-blue); color: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(29, 59, 86, 0.5); border: 2px solid #D4AF37; margin-bottom: 25px; }
+    .content-wrapper { position: relative;
+      z-index: 10; padding: 20px 16px 80px; max-width: 950px; margin: 0 auto; }
+    header { background: var(--ukiyo-deep-blue);
+      color: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(29, 59, 86, 0.5); border: 2px solid #D4AF37;
+      margin-bottom: 25px; }
 
-    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
-    .nav-btn { flex: 0 0 auto; padding: 12px; border: none; border-radius: 8px; background: rgba(255,255,255,0.6); font-weight: 700; color: var(--ukiyo-deep-blue); cursor: pointer; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); white-space: nowrap; }
-    .nav-btn.active { background: var(--ukiyo-deep-blue); color: #fff; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch;
+      flex-wrap: nowrap; }
+    .nav-btn { flex: 0 0 auto; padding: 12px; border: none; border-radius: 8px; background: rgba(255,255,255,0.6);
+      font-weight: 700; color: var(--ukiyo-deep-blue); cursor: pointer; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); white-space: nowrap;
+    }
+    .nav-btn.active { background: var(--ukiyo-deep-blue); color: #fff; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
     .nav-btn-transfer { border-bottom: 3px solid var(--warning-orange); }
-    .nav-btn-history { border-bottom: 3px solid #8e44ad; }
+    .nav-btn-history { border-bottom: 3px solid #8e44ad;
+    }
 
-    .container-3d { background: var(--glass-bg); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border: 1px solid var(--glass-border); margin-bottom: 30px; display: none; }
-    .container-3d.active { display: block; animation: fadeIn 0.5s; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .container-3d { background: var(--glass-bg); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+      border: 1px solid var(--glass-border); margin-bottom: 30px; display: none; }
+    .container-3d.active { display: block; animation: fadeIn 0.5s;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0);
+    } }
 
-    h3.section-title { color: var(--ukiyo-deep-blue); border-left: 6px solid var(--danger-red); padding-left: 15px; margin: 25px 0 15px; font-weight: 900; }
-    input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; box-sizing: border-box; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 15px; margin-bottom: 15px; }
-    .form-row-4 { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    h3.section-title { color: var(--ukiyo-deep-blue); border-left: 6px solid var(--danger-red); padding-left: 15px; margin: 25px 0 15px;
+      font-weight: 900; }
+    input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc;
+      font-size: 1rem; box-sizing: border-box; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;
+    }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 15px; margin-bottom: 15px;
+    }
+    .form-row-4 { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;
+    }
 
-    .btn-save { width: 100%; padding: 15px; border: none; border-radius: 12px; background: linear-gradient(45deg, var(--ukiyo-deep-blue), var(--ukiyo-mid-blue)); color: white; font-size: 1.1rem; font-weight: 900; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-    .btn-save:hover { background: var(--danger-red); transform: translateY(-2px); }
-    .btn-search { background: var(--ukiyo-mid-blue); color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .btn-danger { background: var(--danger-red); color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .btn-save { width: 100%; padding: 15px; border: none; border-radius: 12px; background: linear-gradient(45deg, var(--ukiyo-deep-blue), var(--ukiyo-mid-blue)); color: white;
+      font-size: 1.1rem; font-weight: 900; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+    .btn-save:hover { background: var(--danger-red); transform: translateY(-2px);
+    }
+    .btn-search { background: var(--ukiyo-mid-blue); color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+    }
+    .btn-danger { background: var(--danger-red); color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+    }
 
-    .materials-container { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; margin-top: 10px; }
-    .material-btn { padding: 10px; background: #f9f9f9; border: 1px solid #eee; cursor: pointer; border-radius: 6px; text-align: left; transition: 0.2s; }
-    .material-btn:hover { background: #eef2f5; }
+    .materials-container { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px;
+      border: 1px solid #ddd; border-radius: 8px; background: white; margin-top: 10px; }
+    .material-btn { padding: 10px; background: #f9f9f9;
+      border: 1px solid #eee; cursor: pointer; border-radius: 6px; text-align: left; transition: 0.2s; }
+    .material-btn:hover { background: #eef2f5;
+    }
     .material-btn.active { background: var(--ukiyo-mid-blue); color: white; }
 
-    .record-li { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; border-left: 5px solid var(--ukiyo-mid-blue); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .btn-delete { position: absolute; right: 15px; top: 15px; background: #ffeaea; border: 1px solid #ffcccc; color: red; cursor: pointer; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; }
+    .record-li { background: white; border-radius: 12px;
+      padding: 15px; margin-bottom: 12px; border-left: 5px solid var(--ukiyo-mid-blue); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .btn-delete { position: absolute; right: 15px; top: 15px; background: #ffeaea; border: 1px solid #ffcccc; color: red;
+      cursor: pointer; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; }
 
-    .stock-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .stock-table th, .stock-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-    .stock-table th { background-color: var(--ukiyo-foam); color: var(--ukiyo-deep-blue); white-space: nowrap; }
-    .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; color: white; white-space: nowrap; }
+    .stock-table { width: 100%; border-collapse: collapse;
+      margin-top: 10px; }
+    .stock-table th, .stock-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee;
+    }
+    .stock-table th { background-color: var(--ukiyo-foam); color: var(--ukiyo-deep-blue); white-space: nowrap;
+    }
+    .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; color: white; white-space: nowrap;
+    }
     .status-ok { background-color: var(--safe-green); }
-    .status-low { background-color: var(--danger-red); }
+    .status-low { background-color: var(--danger-red);
+    }
     .status-warn { background-color: var(--warning-orange); }
 
-    .history-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee; }
-    .history-stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-    .stat-box { background: var(--ukiyo-foam); padding: 10px; border-radius: 8px; text-align: center; }
-    .stat-val { font-size: 1.2rem; font-weight: 900; color: var(--ukiyo-deep-blue); }
+    .history-card { background: #fff; border-radius: 12px; padding: 15px;
+      margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee; }
+    .history-stat-grid { display: grid;
+      grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+    .stat-box { background: var(--ukiyo-foam); padding: 10px; border-radius: 8px;
+      text-align: center; }
+    .stat-val { font-size: 1.2rem; font-weight: 900; color: var(--ukiyo-deep-blue);
+    }
     .stat-label { font-size: 0.8rem; color: #666; }
 
-    .mode-toggle { display: flex; background: #ddd; border-radius: 10px; padding: 5px; margin-bottom: 20px; }
-    .mode-btn { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
-    .mode-btn.active { background: white; color: var(--ukiyo-deep-blue); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .mode-toggle { display: flex; background: #ddd;
+      border-radius: 10px; padding: 5px; margin-bottom: 20px; }
+    .mode-btn { flex: 1; padding: 10px; text-align: center; cursor: pointer;
+      border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
+    .mode-btn.active { background: white; color: var(--ukiyo-deep-blue);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-    .ukiyo-signature { position: fixed; left: 20px; bottom: 20px; z-index: 100; font-weight: 900; padding: 10px; background: #F2E6D9; border: 2px solid #1D3B56; border-radius: 5px; transform: rotate(-5deg); cursor: pointer; box-shadow: 3px 3px 0px #1D3B56; }
+    .ukiyo-signature { position: fixed; left: 20px; bottom: 20px; z-index: 100;
+      font-weight: 900; padding: 10px; background: #F2E6D9; border: 2px solid #1D3B56; border-radius: 5px; transform: rotate(-5deg); cursor: pointer;
+      box-shadow: 3px 3px 0px #1D3B56; }
 
     @media (max-width: 600px) { 
-      .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; } 
-      .nav-btn { font-size: 0.9rem; padding: 8px 12px; }
-      .excel-btn { top: auto; bottom: 80px; right: 20px; left: auto; border-radius: 50%; width: 50px; height: 50px; padding: 0; justify-content: center; }
-      .excel-btn span { display: none; }
-      .excel-btn::after { content: "📊"; font-size: 1.5rem; }
+      .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr;
+      } 
+      .nav-btn { font-size: 0.9rem; padding: 8px 12px;
+      }
+      .excel-btn { top: auto; bottom: 80px; right: 20px; left: auto; border-radius: 50%; width: 50px;
+      height: 50px; padding: 0; justify-content: center; }
+      .excel-btn span { display: none;
+      }
+      .excel-btn::after { content: "📊"; font-size: 1.5rem;
+      }
       .checkbox-grid { grid-template-columns: 1fr; }
-      .container-3d { padding: 20px; }
-      .stock-table th, .stock-table td { font-size: 0.85rem; padding: 8px; }
+      .container-3d { padding: 20px;
+      }
+      .stock-table th, .stock-table td { font-size: 0.85rem; padding: 8px;
+      }
     }
   </style>
 </head>
@@ -299,8 +363,22 @@
 
     <div id="tab-inventory" class="container-3d">
       <h3 class="section-title">📦 庫存設定與查詢</h3>
+      
+      <div class="import-section" style="margin: 20px 0; border: 2px dashed #217346; padding: 15px; border-radius: 10px; background: #f0fdf4;">
+          <h4 style="color:#217346; margin-top:0;">📦 步驟 1：同步總處庫存 (拖放Excel)</h4>
+          <input type="file" id="excel-input" accept=".xlsx, .xls" onchange="handleExcelImport(this.files[0])" />
+      </div>
+
+      <div class="report-section" style="margin: 20px 0; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba;">
+          <h4 style="color:#856404; margin-top:0;">📑 步驟 2：產出對帳清單 (回填總處用)</h4>
+          <p style="font-size: 0.9em; color:#666;">當你要回到有網路的辦公室時，點擊下方按鈕產出今日所有領料清單。</p>
+          <button onclick="exportReconciliationReport()" style="background:#856404; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">
+              匯出今日異動清單 (.xlsx)
+          </button>
+      </div>
+
       <div class="form-row-4" style="background: var(--ukiyo-foam); padding:15px; border-radius:10px; margin-bottom:20px;">
-        <div style="grid-column: 1 / -1;"><strong>🔧 設定初始庫存 (分評價類型設定)</strong></div>
+        <div style="grid-column: 1 / -1;"><strong>🔧 設定單筆初始庫存 (分評價類型)</strong></div>
         
         <div style="grid-column: 1 / -1; margin-bottom: 10px;">
              <label>選擇類別 (輔助帶入)</label>
@@ -317,7 +395,7 @@
         </div>
 
         <div>
-            <label>料號 (輸入10碼自動帶出)</label>
+            <label>料號 (輸入10碼)</label>
             <input type="text" id="stockPartNo" placeholder="輸入或選擇..." oninput="handleUniversalInput(this.value, 'stock')">
         </div>
         
@@ -420,7 +498,7 @@
         </div>
 
         <div id="warehouseFields" style="display:none;">
-            <div class="form-row">
+             <div class="form-row">
                 <div><label>目標/來源 倉庫名稱</label>
                     <select id="warehouseTarget">
                         <option value="21M1本庫倉">21M1本庫倉</option>
@@ -429,7 +507,7 @@
                         <option value="21M2徵用倉">21M2徵用倉</option>
                         <option value="其他">其他</option>
                     </select>
-                </div>
+                 </div>
                 <div><label>移轉類型</label>
                     <select id="warehouseType">
                         <option value="transfer_out">移出 (移至該倉 -)</option>
@@ -469,7 +547,6 @@
                 </div>
             </div>
             <div id="materialsContainer_history" class="materials-container" style="display:none; margin-bottom:10px;"></div>
-            
             <button class="btn-search" style="width:100%; margin-top:10px;" onclick="calculateUsageHistory()">📊 開始計算用料統計</button>
         </div>
 
@@ -527,7 +604,14 @@
   </div>
 
 <script>
-// --- 資料庫 (完整資料) ---
+// --- [初始化資料庫與 Dexie.js 持久化設定] ---
+const db = new Dexie("TPC_Offline_ERP");
+db.version(1).stores({
+    materials: 'partNo, name, stock, unit, lastUpdate',
+    changeLog: '++id, date, partNo, type, amount, note' 
+});
+
+// --- [原始資料庫 (靜態資料)] ---
 const rawData = {
   A: `1030420013	懸垂礙子 C型 10000磅 6"φ 灰色
 1030420014	懸垂礙子 C型 15000磅 φ10" 灰色
@@ -881,8 +965,7 @@ function initMaterials() {
   for (let cat in rawData) {
     let lines = rawData[cat].split('\n');
     lines.forEach(line => {
-      let parts = line.split('\t'); // 使用 Tab 分割
-      // 兼容性處理，如果不是 Tab 分割而是空格
+      let parts = line.split('\t');
       if(parts.length < 2) parts = line.split(' ');
       
       let pNo = parts[0].trim();
@@ -901,7 +984,6 @@ window.onload = function() {
 };
 
 function switchTab(tabName) {
-  // 清除暫存變數
   selectedPartNo = "";
   selectedName = "";
   
@@ -933,12 +1015,11 @@ function renderMaterials(context) {
   container.style.display = "flex";
 
   if (!cat) return;
-
   for (let pNo in materials) {
     if (materials[pNo].category === cat) {
       let div = document.createElement('div');
       div.className = "material-btn";
-      div.id = `btn_${context}_${pNo}`; // 給按鈕 ID 方便程式觸發
+      div.id = `btn_${context}_${pNo}`; 
       div.innerHTML = `<strong>${pNo}</strong><br>${materials[pNo].name}`;
       div.onclick = function() {
         selectMaterial(pNo, context);
@@ -951,8 +1032,6 @@ function renderMaterials(context) {
 function selectMaterial(pNo, context) {
   selectedPartNo = pNo;
   selectedName = materials[pNo].name;
-
-  // UI 更新: 標記按鈕
   document.querySelectorAll(`#materialsContainer_${context} .material-btn`).forEach(b => b.classList.remove('active'));
   const targetBtn = document.getElementById(`btn_${context}_${pNo}`);
   if(targetBtn) {
@@ -960,7 +1039,6 @@ function selectMaterial(pNo, context) {
       targetBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  // 根據不同 Tab 填寫資料
   if (context === 'input') {
     document.getElementById('partNoInput').value = pNo;
     document.getElementById('qtySection').style.display = "block";
@@ -971,30 +1049,22 @@ function selectMaterial(pNo, context) {
     document.getElementById('transferPartNo').value = pNo;
     document.getElementById('transferItemName').value = selectedName;
   } else if (context === 'history') {
-    document.getElementById('historySearchInput').value = selectedName; // 顯示名稱較友善
+    document.getElementById('historySearchInput').value = selectedName;
     document.getElementById('historyItemTitle').innerText = pNo + " " + selectedName;
   } else if (context === 'analysis') {
     document.getElementById('safePartNo').value = pNo;
   }
 }
 
-// --- 萬用全域自動帶入函式 ---
-// 支援所有頁面的 "10碼料號" 輸入，自動切換類別、選中材料
 function handleUniversalInput(val, context) {
     if (val.length === 10 && materials[val]) {
         const mat = materials[val];
-        
-        // 1. 如果該頁面有類別下拉選單，自動切換
         const catSelect = document.getElementById(`category_${context}`);
         if(catSelect) {
             catSelect.value = mat.category;
-            renderMaterials(context); // 重新渲染該類別的按鈕列表
+            renderMaterials(context);
         }
-
-        // 2. 觸發選取邏輯
         selectMaterial(val, context);
-
-        // 3. 特殊欄位處理
         if(context === 'search') {
             document.getElementById('searchNameDisplay').innerText = mat.name;
             filterRecords();
@@ -1005,9 +1075,7 @@ function handleUniversalInput(val, context) {
     }
 }
 
-// ---------------------- 核心功能 ----------------------
-
-// 儲存一般紀錄 (領/退/借)
+// 儲存一般紀錄
 document.getElementById('materialForm').addEventListener('submit', function(e) {
   e.preventDefault();
   
@@ -1067,7 +1135,6 @@ function processStockIn() {
     renderLog();
 }
 
-// 處理調撥
 function processTransfer() {
     const pNo = document.getElementById('transferPartNo').value;
     const qty = parseInt(document.getElementById('transferQty').value);
@@ -1099,7 +1166,6 @@ function processTransfer() {
     renderLog();
 }
 
-// 處理倉庫移轉
 function processWarehouseTransfer() {
     const pNo = document.getElementById('transferPartNo').value;
     const qty = parseInt(document.getElementById('warehouseQty').value);
@@ -1129,15 +1195,94 @@ function processWarehouseTransfer() {
     renderLog();
 }
 
+// 儲存紀錄並同步寫入 IndexedDB 供對帳單使用
 function saveRecordToLS(record) {
   let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
   records.push(record);
   localStorage.setItem('materialRecords', JSON.stringify(records));
+
+  // 寫入 Dexie 作為對帳報表來源
+  db.changeLog.add({
+      date: record.date + " " + new Date().toLocaleTimeString(),
+      partNo: record.partNo,
+      type: record.type,
+      amount: record.qty,
+      note: record.orderNo + " / " + record.person + " / " + record.evalType
+  }).catch(e => console.error("Dexie 寫入失敗", e));
 }
 
-// --- 庫存計算核心 ---
+// --- [2. 批次資料匯入功能 - Excel Parser] ---
+async function handleExcelImport(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
-// 1. 設定初始庫存 (含評價類型)
+            let stockSettings = JSON.parse(localStorage.getItem('initialStock')) || {};
+
+            // 1. 將 Excel 資料寫入 localStorage 以維持原系統 UI 運作 (預設為 0新)
+            jsonData.forEach(item => {
+                let pNo = String(item['料號'] || item['材料代號'] || item['Material_No'] || '').trim();
+                let stock = Number(item['庫存'] || item['現存量'] || item['數量'] || 0);
+                if(pNo) {
+                    let key = `${pNo}_0新`;
+                    stockSettings[key] = stock;
+                }
+            });
+            localStorage.setItem('initialStock', JSON.stringify(stockSettings));
+
+            // 2. 將格式化資料寫入 IndexedDB 持久化備份
+            const formattedData = jsonData.map(item => ({
+                partNo: String(item['料號'] || item['材料代號'] || '').trim(),
+                name: item['品名'] || item['材料名稱'] || '未知品項',
+                stock: Number(item['庫存'] || item['現存量'] || item['數量'] || 0),
+                unit: item['單位'] || 'EA',
+                lastUpdate: new Date().toLocaleString()
+            })).filter(i => i.partNo !== "");
+            await db.materials.bulkPut(formattedData);
+
+            alert(`✅ 匯入成功！共更新 ${formattedData.length} 筆材料資料。`);
+            renderInventoryTable();
+        } catch(err) {
+            console.error(err);
+            alert("檔案解析失敗，請確認格式。");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// --- [4. 產出差異比對表 (Reconciliation Report)] ---
+async function exportReconciliationReport() {
+    const logs = await db.changeLog.toArray();
+    if (logs.length === 0) {
+        alert("目前沒有任何異動紀錄需要回填。");
+        return;
+    }
+
+    const reportData = logs.map(l => ({
+        "發生時間": l.date,
+        "材料料號": l.partNo,
+        "異動類型": l.type,
+        "異動數量": l.amount,
+        "事由/工程編號": l.note,
+        "ERP狀態": "待輸入"
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(reportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "今日異動回填清單");
+    const fileName = `台電異動報告_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    if(confirm("對帳單已匯出。是否要清空已匯出的離線紀錄？\n(注意：這不影響歷史紀錄，僅清除待回填清單)")) {
+        await db.changeLog.clear();
+    }
+}
+
 function setInitialStock() {
   const pNo = document.getElementById('stockPartNo').value;
   const qty = parseInt(document.getElementById('stockInitQty').value);
@@ -1154,7 +1299,6 @@ function setInitialStock() {
   renderInventoryTable();
 }
 
-// 刪除單筆初始庫存
 function deleteInitialStock() {
     const pNo = document.getElementById('stockPartNo').value;
     const evalType = document.getElementById('stockEvalType').value;
@@ -1170,7 +1314,6 @@ function deleteInitialStock() {
     }
 }
 
-// 清空所有初始庫存
 function clearAllInitialStock() {
     if(confirm("⚠️ 警告：這將清空所有材料的「初始庫存」設定！\n(異動紀錄將保留，但計算結果會改變)\n\n確定執行？")) {
         localStorage.removeItem('initialStock');
@@ -1179,13 +1322,11 @@ function clearAllInitialStock() {
     }
 }
 
-// 2. 取得目前庫存表
 function getInventoryMap() {
   let stock = {};
   let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
   let initials = JSON.parse(localStorage.getItem('initialStock')) || {};
   
-  // 載入初始庫存
   for (let key in initials) {
     let [pNo, ...rest] = key.split('_');
     let eType = rest.join('_');
@@ -1201,7 +1342,6 @@ function getInventoryMap() {
     };
   }
 
-  // 計算歷史異動
   records.forEach(r => {
     let rEvalType = r.evalType || "0新";
     let key = `${r.partNo}_${rEvalType}`;
@@ -1228,31 +1368,17 @@ function getInventoryMap() {
   return stock;
 }
 
- // 3. <div class="import-section" style="margin: 20px 0; border: 2px dashed #217346; padding: 15px; border-radius: 10px;">
-    <h4 style="color:#217346; margin-top:0;">📦 步驟 1：同步總處庫存</h4>
-    <input type="file" id="excel-input" accept=".xlsx, .xls" onchange="handleExcelImport(this.files[0])" />
-</div>
-
-<div class="report-section" style="margin: 20px 0; background: #fff3cd; padding: 15px; border-radius: 10px;">
-    <h4 style="color:#856404; margin-top:0;">📑 步驟 2：產出對帳清單 (回填總處用)</h4>
-    <p style="font-size: 0.9em;">當你要回到有網路的辦公室時，點擊下方按鈕產出今日所有領料清單。</p>
-    <button onclick="exportReconciliationReport()" style="background:#856404; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">
-        匯出今日異動清單 (.xlsx)
-    </button>
-</div>
-
-// 4. 渲染庫存表格
 function renderInventoryTable() {
   const tbody = document.getElementById('inventoryBody');
   const filter = document.getElementById('filterStockInput').value.toLowerCase();
   const inventory = getInventoryMap();
   tbody.innerHTML = "";
 
-  // 將 Object 轉為 Array 並排序 (料號 -> 評價類型)
   let list = Object.values(inventory).sort((a, b) => {
       if (a.pNo !== b.pNo) return a.pNo.localeCompare(b.pNo);
       return a.evalType.localeCompare(b.evalType);
   });
+
   list.forEach(item => {
     if (filter && !item.pNo.includes(filter) && !item.name.includes(filter)) return;
 
@@ -1276,106 +1402,10 @@ function renderInventoryTable() {
   });
 }
 
-  // --- [1. 初始化資料庫與持久化設定] ---
-const db = new Dexie("TPC_Offline_ERP");
-
-// 定義兩個表：
-// materials: 存庫存資料 (料號為 Key)
-// changeLog: 存異動紀錄 (用來產出對帳報表)
-db.version(1).stores({
-    materials: 'partNo, name, stock, unit, lastUpdate',
-    changeLog: '++id, date, partNo, type, amount, note' 
-});
-
-// --- [2. 批次資料匯入功能 - Excel Parser] ---
-async function handleExcelImport(file) {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-        // 將 Excel 資料格式化
-        const formattedData = jsonData.map(item => ({
-            partNo: String(item['料號'] || item['材料代號'] || '').trim(),
-            name: item['品名'] || item['材料名稱'] || '未知品項',
-            stock: Number(item['庫存'] || item['現存量'] || 0),
-            unit: item['單位'] || 'EA',
-            lastUpdate: new Date().toLocaleString()
-        })).filter(i => i.partNo !== "");
-
-        // 寫入資料庫 (bulkPut: 如果料號重複會自動覆蓋更新)
-        await db.materials.bulkPut(formattedData);
-        
-        alert(`✅ 匯入成功！共更新 ${formattedData.length} 筆材料資料。`);
-        if (typeof renderInventory === "function") renderInventory(); // 呼叫你的渲染函數
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-// --- [3. 紀錄領料異動 (用於差異比對)] ---
-// 修改你原本的領料函數，加入這段紀錄邏輯
-async function logMaterialChange(partNo, amount, type = "領用", note = "") {
-    // 1. 紀錄異動 (為了產出差異比對表)
-    await db.changeLog.add({
-        date: new Date().toLocaleString(),
-        partNo: partNo,
-        type: type, // '領用' 或 '借用'
-        amount: amount,
-        note: note
-    });
-
-    // 2. 同時更新離線庫存數值
-    const item = await db.materials.get(partNo);
-    if (item) {
-        await db.materials.update(partNo, { 
-            stock: item.stock - amount,
-            lastUpdate: new Date().toLocaleString()
-        });
-    }
-}
-
-// --- [4. 產出差異比對表 (Reconciliation Report)] ---
-async function exportReconciliationReport() {
-    const logs = await db.changeLog.toArray();
-    
-    if (logs.length === 0) {
-        alert("目前沒有任何異動紀錄需要回填。");
-        return;
-    }
-
-    // 整理成 Excel 需要的結構
-    const reportData = logs.map(l => ({
-        "發生時間": l.date,
-        "材料料號": l.partNo,
-        "異動類型": l.type,
-        "異動數量": l.amount,
-        "事由/工程編號": l.note,
-        "ERP狀態": "待輸入"
-    }));
-
-    // 利用 SheetJS 產出 Excel
-    const ws = XLSX.utils.json_to_sheet(reportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "今日異動回填清單");
-    
-    const fileName = `台電異動報告_${new Date().toISOString().slice(0,10)}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    
-    // 選項：導出後是否清空紀錄？
-    if(confirm("對帳單已匯出。是否要清空已匯出的離線紀錄？")) {
-        await db.changeLog.clear();
-    }
-}
-
-// --- 歷史紀錄列表 ---
 function renderLog() {
   const list = document.getElementById('logList');
   let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
-  // 排序：新到舊
   records.sort((a, b) => b.id - a.id);
-  
   list.innerHTML = "";
   records.forEach((r, index) => {
     let evalDisplay = r.evalType ? `<span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:5px;">${r.evalType}</span>` : "";
@@ -1401,7 +1431,6 @@ function deleteRecord(id) {
   if(!confirm("確定刪除此紀錄？將影響庫存計算。")) return;
   let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
   records = records.filter(r => r.id !== id);
-  
   localStorage.setItem('materialRecords', JSON.stringify(records));
   renderLog();
   renderInventoryTable();
@@ -1444,14 +1473,11 @@ function clearFilters() {
   filterRecords();
 }
 
-// --- Excel 匯出 ---
 function openExportModal() { document.getElementById('exportModal').style.display = 'flex'; }
 function closeExportModal() { document.getElementById('exportModal').style.display = 'none'; }
 
 function confirmExport() {
   let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
-  
-  // 1. 日期過濾
   const start = document.getElementById('exportStart').value;
   const end = document.getElementById('exportEnd').value;
   if(start && end) {
@@ -1463,7 +1489,6 @@ function confirmExport() {
      });
   }
 
-  // 2. 欄位過濾
   const checkboxes = document.querySelectorAll('.export-col:checked');
   const cols = Array.from(checkboxes).map(cb => cb.value);
   const colMap = {
@@ -1478,16 +1503,13 @@ function confirmExport() {
     });
     return row;
   });
-  // 3. 產出 Excel
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "MaterialData");
   XLSX.writeFile(wb, `Material_Export_${new Date().toISOString().slice(0,10)}.xlsx`);
-  
   closeExportModal();
 }
 
-// --- 預警與分析 ---
 function setSafetyStock() {
   const pNo = document.getElementById('safePartNo').value;
   const qty = document.getElementById('safeQty').value;
@@ -1509,7 +1531,6 @@ function runAnalysis() {
   let totalValidStock = {};
   for(let key in inventory) {
       let item = inventory[key];
-      // 假設只有新品才算入安全庫存檢查
       if (item.evalType === "0新" || item.evalType === "3資產新") {
           if (!totalValidStock[item.pNo]) totalValidStock[item.pNo] = 0;
           totalValidStock[item.pNo] += item.total;
@@ -1536,11 +1557,8 @@ function runAnalysis() {
   report.innerHTML = html;
 }
 
-// --- 歷史統計 ---
 function calculateUsageHistory() {
-    // 如果沒有透過按鈕選取，嘗試使用輸入框的值
     let inputVal = document.getElementById('historySearchInput').value;
-    // 如果沒選中但輸入了料號，嘗試自動對應
     if(!selectedPartNo && inputVal.length===10 && materials[inputVal]) {
         selectMaterial(inputVal, 'history');
     }
@@ -1549,7 +1567,6 @@ function calculateUsageHistory() {
     
     document.getElementById('historyResult').style.display = "block";
     let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
-    // 過濾出此料號的 "領料" 紀錄 (作為消耗依據)
     let targets = records.filter(r => r.partNo === selectedPartNo && r.type === "領料");
     let total = 0;
     let monthly = new Array(12).fill(0);
@@ -1574,7 +1591,7 @@ function calculateUsageHistory() {
     let mHtml = "";
     ["一","二","三","四","五","六","七","八","九","十","十一","十二"].forEach((m, i) => {
         let val = monthly[i];
-        let barH = total > 0 ? (val/total)*50 : 0; // 簡易長條圖高度
+        let barH = total > 0 ? (val/total)*50 : 0; 
         mHtml += `
             <div>
                 <div style="height:30px; display:flex; align-items:flex-end; justify-content:center;">
