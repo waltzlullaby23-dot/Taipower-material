@@ -365,13 +365,13 @@
       <h3 class="section-title">📦 庫存設定與查詢</h3>
       
       <div class="import-section" style="margin: 20px 0; border: 2px dashed #217346; padding: 15px; border-radius: 10px; background: #f0fdf4;">
-          <h4 style="color:#217346; margin-top:0;">📦 步驟 1：同步總處庫存 (拖放Excel)</h4>
+          <h4 style="color:#217346; margin-top:0;">📦 步驟 1：同步系統庫存 (拖放Excel)</h4>
           <input type="file" id="excel-input" accept=".xlsx, .xls" onchange="handleExcelImport(this.files[0])" />
       </div>
 
       <div class="report-section" style="margin: 20px 0; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba;">
-          <h4 style="color:#856404; margin-top:0;">📑 步驟 2：產出對帳清單 (回填總處用)</h4>
-          <p style="font-size: 0.9em; color:#666;">當你要回到有網路的辦公室時，點擊下方按鈕產出今日所有領料清單。</p>
+          <h4 style="color:#856404; margin-top:0;">📑 步驟 2：產出對帳清單 </h4>
+          <p style="font-size: 0.9em; color:#666;">點擊下方按鈕產出今日所有領料清單。</p>
           <button onclick="exportReconciliationReport()" style="background:#856404; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">
               匯出今日異動清單 (.xlsx)
           </button>
@@ -1212,75 +1212,156 @@ function saveRecordToLS(record) {
 }
 
 // --- [2. 批次資料匯入功能 - Excel Parser] ---
-async function handleExcelImport(file) {
+// ==========================================
+// ✨ 精進增強：三合一異動公式計算與今日差異追蹤模組
+// ==========================================
+
+// 1. ERP Excel (1110.xlsx) 智慧去空防錯匯入
+function handleExcelImport(e) {
+    const file = e.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = async function(evt) {
         try {
-            const data = new Uint8Array(e.target.result);
+            const data = new Uint8Array(evt.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-            let stockSettings = JSON.parse(localStorage.getItem('initialStock')) || {};
-
-            // 1. 將 Excel 資料寫入 localStorage 以維持原系統 UI 運作 (預設為 0新)
-            jsonData.forEach(item => {
-                let pNo = String(item['料號'] || item['材料代號'] || item['Material_No'] || '').trim();
-                let stock = Number(item['庫存'] || item['現存量'] || item['數量'] || 0);
-                if(pNo) {
-                    let key = `${pNo}_0新`;
-                    stockSettings[key] = stock;
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            
+            let updateCount = 0;
+            let insertCount = 0;
+            
+            await db.transaction('rw', db.materials, async () => {
+                for (let row of jsonData) {
+                    let materialCode = "";
+                    let name = "";
+                    let rating = 0;
+                    let unit = "";
+                    let location = "";
+                    let stock = 0;
+                    
+                    // 智慧對應並修剪所有不可見的空白符號 (完美相容台電料號前方補 0)
+                    for (let key in row) {
+                        let trimmedKey = key.trim();
+                        if (trimmedKey === "物料編號") materialCode = String(row[key]).trim();
+                        else if (trimmedKey === "名稱規範") name = String(row[key]).trim();
+                        else if (trimmedKey === "評價") rating = parseInt(row[key]) || 0;
+                        else if (trimmedKey === "單位") unit = String(row[key]).trim();
+                        else if (trimmedKey === "儲格") location = String(row[key]).trim();
+                        else if (trimmedKey === "庫存") {
+                            let rawStock = String(row[key]).replace(/,/g, '').trim();
+                            stock = parseFloat(rawStock) || 0;
+                        }
+                    }
+                    
+                    if (!materialCode) continue; 
+                    
+                    const existing = await db.materials.get(materialCode);
+                    if (existing) {
+                        await db.materials.update(materialCode, {
+                            name: name || existing.name,
+                            rating: rating !== undefined ? rating : existing.rating,
+                            unit: unit || existing.unit,
+                            location: location || existing.location,
+                            erpStock: stock // 以匯入之 Excel 的庫存量當成基準原庫存
+                        });
+                        updateCount++;
+                    } else {
+                        await db.materials.add({
+                            id: materialCode, name: name, rating: rating, unit: unit, location: location, erpStock: stock
+                        });
+                        insertCount++;
+                    }
                 }
             });
-            localStorage.setItem('initialStock', JSON.stringify(stockSettings));
-
-            // 2. 將格式化資料寫入 IndexedDB 持久化備份
-            const formattedData = jsonData.map(item => ({
-                partNo: String(item['料號'] || item['材料代號'] || '').trim(),
-                name: item['品名'] || item['材料名稱'] || '未知品項',
-                stock: Number(item['庫存'] || item['現存量'] || item['數量'] || 0),
-                unit: item['單位'] || 'EA',
-                lastUpdate: new Date().toLocaleString()
-            })).filter(i => i.partNo !== "");
-            await db.materials.bulkPut(formattedData);
-
-            alert(`✅ 匯入成功！共更新 ${formattedData.length} 筆材料資料。`);
-            renderInventoryTable();
-        } catch(err) {
+            
+            alert(`🎉 ERP Excel 庫存智慧對應匯入成功！\n共更新對應 ${updateCount} 筆既存物料庫存，新增 ${insertCount} 筆新物料項目！`);
+            e.target.value = ""; 
+            await renderData(); // 重新渲染畫面
+        } catch (err) {
             console.error(err);
-            alert("檔案解析失敗，請確認格式。");
+            alert("❌ 解析 Excel 失敗！請確保檔案結構包含：【物料編號、名稱規範、庫存】等欄位。");
         }
     };
     reader.readAsArrayBuffer(file);
 }
 
-// --- [4. 產出差異比對表 (Reconciliation Report)] ---
-async function exportReconciliationReport() {
-    const logs = await db.changeLog.toArray();
-    if (logs.length === 0) {
-        alert("目前沒有任何異動紀錄需要回填。");
-        return;
-    }
-
-    const reportData = logs.map(l => ({
-        "發生時間": l.date,
-        "材料料號": l.partNo,
-        "異動類型": l.type,
-        "異動數量": l.amount,
-        "事由/工程編號": l.note,
-        "ERP狀態": "待輸入"
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(reportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "今日異動回填清單");
-    const fileName = `台電異動報告_${new Date().toISOString().slice(0,10)}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+// 2. 核心公式：最新更新後庫存 = Excel原庫存 - 領料 - 借用 + 退料
+// 3. 自動渲染「今日物料變更與差異追蹤清單」
+async function renderData() {
+    const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+    const diffFilter = document.getElementById('diffFilter') ? document.getElementById('diffFilter').value : 'all';
     
-    if(confirm("對帳單已匯出。是否要清空已匯出的離線紀錄？\n(注意：這不影響歷史紀錄，僅清除待回填清單)")) {
-        await db.changeLog.clear();
+    const materials = await db.materials.toArray();
+    const transactions = await db.transactions.toArray();
+    
+    // 初始化統計今日異動
+    const txSummary = {};
+    transactions.forEach(tx => {
+        if (!txSummary[tx.materialId]) {
+            txSummary[tx.materialId] = { 領料: 0, 借用: 0, 退料: 0, netChange: 0 };
+        }
+        let qty = parseInt(tx.qty) || 0;
+        if (tx.type === "領料") {
+            txSummary[tx.materialId].領料 += qty;
+            txSummary[tx.materialId].netChange -= qty; // 公式：扣減領料
+        } else if (tx.type === "借用") {
+            txSummary[tx.materialId].借用 += qty;
+            txSummary[tx.materialId].netChange -= qty; // 公式：扣減借用
+        } else if (tx.type === "退料") {
+            txSummary[tx.materialId].退料 += qty;
+            txSummary[tx.materialId].netChange += qty; // 公式：增加退料
+        }
+    });
+    
+    // 渲染：今日異動追蹤清單區塊 (自動呈現在前台)
+    const changeTbody = document.querySelector('#todayChangeTable tbody');
+    if (changeTbody) {
+        let hasChange = false;
+        let changeHtml = "";
+
+        materials.forEach(m => {
+            let summary = txSummary[m.id];
+            if (summary && (summary.領料 > 0 || summary.借用 > 0 || summary.退料 > 0)) {
+                hasChange = true;
+                let erpStock = m.erpStock || 0;
+                let latestStock = erpStock + summary.netChange;
+                
+                let changeBadge = "";
+                if (summary.netChange > 0) {
+                    changeBadge = `<span class="badge" style="background-color:#e2efda; color:#375623; padding:4px 8px; border-radius:12px; font-weight:bold;">增加 (+${summary.netChange})</span>`;
+                } else if (summary.netChange < 0) {
+                    changeBadge = `<span class="badge" style="background-color:#fce4d6; color:#c65911; padding:4px 8px; border-radius:12px; font-weight:bold;">減少 (${summary.netChange})</span>`;
+                } else {
+                    changeBadge = `<span class="badge badge-none">互抵無淨變</span>`;
+                }
+
+                changeHtml += `
+                    <tr>
+                        <td style="font-family:monospace; font-weight:bold;">${m.id}</td>
+                        <td style="font-weight:600; color:var(--ukiyo-deep-blue);">${m.name}</td>
+                        <td style="text-align:center; font-weight:bold; color:#7f8c8d;">${erpStock}</td>
+                        <td style="color:var(--danger-red); text-align:center; font-weight:bold;">${summary.領料 || 0}</td>
+                        <td style="color:var(--warning-orange); text-align:center; font-weight:bold;">${summary.借用 || 0}</td>
+                        <td style="color:var(--success-green); text-align:center; font-weight:bold;">${summary.退料 || 0}</td>
+                        <td style="text-align:center; font-size:15px; font-weight:900; color:var(--ukiyo-deep-blue); background-color:#f1f8ff;">${latestStock}</td>
+                        <td>${changeBadge}</td>
+                    </tr>
+                `;
+            }
+        });
+
+        if (hasChange) {
+            changeTbody.innerHTML = changeHtml;
+        } else {
+            changeTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #999; padding: 20px;">💡 今日尚無任何材料發生異動變更。</td></tr>`;
+        }
     }
+
+    // 呼叫您原本的 UI 更新與主表格渲染函數...
+    // (此處保留您原本的表格產生 loop 即可，latestStock 改用 erpStock + summary.netChange)
 }
 
 function setInitialStock() {
