@@ -1706,6 +1706,87 @@ function toggleSignature(el) {
     let span = document.getElementById('sigName');
     span.hidden = !span.hidden;
 }
-</script>
+<script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const canvas = document.getElementById("signature-canvas");
+            if (!canvas) return; 
+            
+            const ctx = canvas.getContext("2d");
+            const clearBtn = document.getElementById("clear-btn");
+            const signatureInput = document.getElementById("signature-data");
+            
+            let isDrawing = false;
+            let hasSigned = false;
+
+            // 設定畫筆樣式
+            ctx.strokeStyle = "#1e293b"; // 深色墨水
+            ctx.lineWidth = 3;           // 筆跡粗細
+            ctx.lineCap = "round";       
+            ctx.lineJoin = "round";
+
+            // 取得相對座標
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            // 開始畫畫
+            function startDrawing(e) {
+                isDrawing = true;
+                hasSigned = true;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                if(e.touches) e.preventDefault(); 
+            }
+
+            // 畫畫中
+            function draw(e) {
+                if (!isDrawing) return;
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                if(e.touches) e.preventDefault();
+            }
+
+            // 結束畫畫
+            function stopDrawing() {
+                isDrawing = false;
+                updateSignatureInput();
+            }
+
+            // 更新隱藏欄位
+            function updateSignatureInput() {
+                if (hasSigned) {
+                    signatureInput.value = canvas.toDataURL("image/png");
+                } else {
+                    signatureInput.value = "";
+                }
+            }
+
+            // 滑鼠事件
+            canvas.addEventListener("mousedown", startDrawing);
+            canvas.addEventListener("mousemove", draw);
+            canvas.addEventListener("mouseup", stopDrawing);
+            canvas.addEventListener("mouseleave", stopDrawing);
+
+            // 觸控事件 (手機/平板)
+            canvas.addEventListener("touchstart", startDrawing);
+            canvas.addEventListener("touchmove", draw);
+            canvas.addEventListener("touchend", stopDrawing);
+
+            // 清除按鈕
+            clearBtn.addEventListener("click", function () {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                hasSigned = false;
+                signatureInput.value = ""; 
+            });
+        });
+    </script>
 </body>
 </html>
