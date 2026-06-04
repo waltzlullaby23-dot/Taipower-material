@@ -294,7 +294,7 @@
           <div><label>單號</label><input type="text" id="orderNo" placeholder="請輸入單號" required /></div>
           <div><label>領/退/借用人姓名</label><input type="text" id="personName" required /></div>
         </div>
-    
+        
         <div class="form-row">
           <div><label>發/收料經辦人</label><input type="text" id="staffName" required /></div>
           <div>
@@ -603,101 +603,7 @@
     設計人：<span id="sigName" hidden>三木</span>
   </div>
 
-
 <script>
-  (function() {
-    function initSignature() {
-      const canvas = document.getElementById("signature-canvas");
-      const clearBtn = document.getElementById("clear-btn");
-      const signatureInput = document.getElementById("signature-data");
-      
-      if (!canvas || !clearBtn) return;
-      const ctx = canvas.getContext("2d");
-      let isDrawing = false;
-      let hasSigned = false;
-
-      // 自動修正：動態取得當前格子實際寬度，防止畫面被拉伸不能畫
-      function resizeCanvas() {
-        const rect = canvas.parentNode.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = 130;
-        
-        // 重新初始化畫筆樣式（每次寬度變更都會被重設）
-        ctx.strokeStyle = "#1a202c"; 
-        ctx.lineWidth = 3;           
-        ctx.lineCap = "round";       
-        ctx.lineJoin = "round";
-      }
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
-
-      // 精確座標計算（扣除網頁捲動與父元素偏移）
-      function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-          x: clientX - rect.left,
-          y: clientY - rect.top
-        };
-      }
-
-      function startDrawing(e) {
-        isDrawing = true;
-        hasSigned = true;
-        const pos = getPos(e);
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-        // 如果是觸控平板或手機，強制阻止頁面捲動，專心畫畫
-        if (e.touches) e.preventDefault(); 
-      }
-
-      function draw(e) {
-        if (!isDrawing) return;
-        const pos = getPos(e);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        if (e.touches) e.preventDefault();
-      }
-
-      function stopDrawing() {
-        if (!isDrawing) return;
-        isDrawing = false;
-        if (hasSigned) {
-          signatureInput.value = canvas.toDataURL("image/png");
-        } else {
-          signatureInput.value = "";
-        }
-      }
-
-      // 註冊事件（將事件提升到最高優先級）
-      canvas.addEventListener("mousedown", startDrawing, { passive: false });
-      canvas.addEventListener("mousemove", draw, { passive: false });
-      window.addEventListener("mouseup", stopDrawing);
-
-      canvas.addEventListener("touchstart", startDrawing, { passive: false });
-      canvas.addEventListener("touchmove", draw, { passive: false });
-      canvas.addEventListener("touchend", stopDrawing);
-
-      // 清除按鈕
-      clearBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation(); // 防止干涉到系統其他的資料庫操作
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        hasSigned = false;
-        signatureInput.value = "";
-      });
-    }
-
-    // 雙重保險：確保 Dexie 資料庫與網頁元素通通讀取完畢後，100% 啟動簽名
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initSignature);
-    } else {
-      initSignature();
-    }
-  })();
-</script>
-
 // --- [初始化資料庫與 Dexie.js 持久化設定] ---
 const db = new Dexie("TPC_Offline_ERP");
 db.version(1).stores({
@@ -1784,6 +1690,7 @@ function toggleSignature(el) {
     let span = document.getElementById('sigName');
     span.hidden = !span.hidden;
 }
+</script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     // 1. 自動尋找「領/退/借用人姓名」欄位 (兼容不同 id 命名)
@@ -1892,6 +1799,6 @@ document.addEventListener("DOMContentLoaded", function () {
         signatureInput.value = "";
     });
 });
-</script>
+</script>  
 </body>
 </html>
