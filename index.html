@@ -288,28 +288,21 @@
               <option value="退料">退料 (Return)</option>
             </select>
           </div>
-       <div class="col-md-6">
-                    <label for="borrower" class="form-label fw-bold">領/退/借用人姓名</label>
-                    <input type="text" class="form-input" id="borrower" placeholder="請輸入姓名">
-                    
-                    <div class="signature-section mt-3">
-                        <label class="form-label fw-bold text-muted" style="font-size: 0.9em;">
-                            領/退/借用人簽名 <span class="fw-normal">(非必填)</span>
-                        </label>
-                        <div style="position: relative; border: 1px solid #ced4da; border-radius: 8px; background-color: #fff; width: 100%; max-width: 400px; box-shadow: inset 0 1px 2px rgba(0,0,0,.075);">
-                            <canvas id="signature-canvas" width="400" height="150" style="display: block; cursor: crosshair; touch-action: none; border-radius: 8px;"></canvas>
-                            <button type="button" id="clear-btn" class="btn btn-sm btn-outline-secondary" style="position: absolute; right: 10px; bottom: 10px; font-size: 11px; padding: 2px 8px;">
-                                清除
-                            </button>
-                        </div>
-                        <input type="hidden" id="signature-data" name="signature_data">
-                    </div>
-                </div>
+        </div>
 
         <div class="form-row">
           <div><label>單號</label><input type="text" id="orderNo" placeholder="請輸入單號" required /></div>
           <div><label>領/退/借用人姓名</label><input type="text" id="personName" required /></div>
         </div>
+
+        <div class="signature-block" style="margin-top: 15px; grid-column: 1 / -1;">
+              <label style="font-weight: bold; color: var(--ukiyo-deep-blue); display: block; margin-bottom: 5px;">領/退/借用人簽名 <span style="font-weight: normal; font-size: 0.85em; color: #7f8c8d;">(非必填)</span></label>
+              <div style="position: relative; border: 1px solid #ccc; border-radius: 8px; background-color: #fff; width: 100%; max-width: 400px; height: 130px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                  <canvas id="signature-canvas" width="400" height="130" style="display: block; cursor: crosshair; touch-action: none; width: 100%; height: 100%;"></canvas>
+                  <button type="button" id="clear-btn" style="position: absolute; right: 8px; bottom: 8px; font-size: 11px; padding: 2px 8px; background: #f8f9fa; border: 1px solid #cbd5e1; border-radius: 4px; z-index: 50; cursor: pointer;">清除</button>
+              </div>
+              <input type="hidden" id="signature-data" name="signature_data">
+          </div>
         
         <div class="form-row">
           <div><label>發/收料經辦人</label><input type="text" id="staffName" required /></div>
@@ -329,83 +322,7 @@
           <option value="H">H 類 (開關)</option>
           <option value="D">D 類 (電表)</option>
         </select>
-</div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const canvas = document.getElementById("signature-canvas");
-        if (!canvas) return; 
-        
-        const ctx = canvas.getContext("2d");
-        const clearBtn = document.getElementById("clear-btn");
-        const signatureInput = document.getElementById("signature-data");
-        
-        let isDrawing = false;
-        let hasSigned = false;
-
-        // 設定畫筆樣式
-        ctx.strokeStyle = "#1e293b"; 
-        ctx.lineWidth = 3;           
-        ctx.lineCap = "round";       
-        ctx.lineJoin = "round";
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
-        }
-
-        function startDrawing(e) {
-            isDrawing = true;
-            hasSigned = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-            if (e.touches) e.preventDefault(); 
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-            if (e.touches) e.preventDefault();
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-            updateSignatureInput();
-        }
-
-        function updateSignatureInput() {
-            if (hasSigned) {
-                signatureInput.value = canvas.toDataURL("image/png");
-            } else {
-                signatureInput.value = "";
-            }
-        }
-
-        canvas.addEventListener("mousedown", startDrawing);
-        canvas.addEventListener("mousemove", draw);
-        canvas.addEventListener("mouseup", stopDrawing);
-        canvas.addEventListener("mouseleave", stopDrawing);
-
-        canvas.addEventListener("touchstart", startDrawing);
-        canvas.addEventListener("touchmove", draw);
-        canvas.addEventListener("touchend", stopDrawing);
-
-        clearBtn.addEventListener("click", function () {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            hasSigned = false;
-            signatureInput.value = "";
-          
         <div id="materialsContainer_input" class="materials-container">
           <div style="color:#888; text-align:center; padding:20px;">請先選擇類別或輸入料號</div>
         </div>
@@ -695,6 +612,75 @@
     設計人：<span id="sigName" hidden>三木</span>
   </div>
 
+
+// === 這裡開始是簽名板專屬控制邏輯 ===
+  document.addEventListener("DOMContentLoaded", function () {
+      const canvas = document.getElementById("signature-canvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const clearBtn = document.getElementById("clear-btn");
+      const signatureInput = document.getElementById("signature-data");
+      let isDrawing = false;
+      let hasSigned = false;
+
+      ctx.strokeStyle = "#1a202c"; 
+      ctx.lineWidth = 3;           
+      ctx.lineCap = "round";       
+      ctx.lineJoin = "round";
+
+      function getPos(e) {
+          const rect = canvas.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          return {
+              x: (clientX - rect.left) * (canvas.width / rect.width),
+              y: (clientY - rect.top) * (canvas.height / rect.height)
+          };
+      }
+
+      function startDrawing(e) {
+          isDrawing = true;
+          hasSigned = true;
+          const pos = getPos(e);
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+          if (e.touches) e.preventDefault();
+      }
+
+      function draw(e) {
+          if (!isDrawing) return;
+          const pos = getPos(e);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+          if (e.touches) e.preventDefault();
+      }
+
+      function stopDrawing() {
+          if (!isDrawing) return;
+          isDrawing = false;
+          if (hasSigned) {
+              signatureInput.value = canvas.toDataURL("image/png");
+          } else {
+              signatureInput.value = "";
+          }
+      }
+
+      canvas.addEventListener("mousedown", startDrawing);
+      canvas.addEventListener("mousemove", draw);
+      window.addEventListener("mouseup", stopDrawing);
+
+      canvas.addEventListener("touchstart", startDrawing, { passive: false });
+      canvas.addEventListener("touchmove", draw, { passive: false });
+      canvas.addEventListener("touchend", stopDrawing);
+
+      clearBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          hasSigned = false;
+          signatureInput.value = "";
+      });
+  });
+  // === 簽名板控制邏輯結束 ===  
 <script>
 // --- [初始化資料庫與 Dexie.js 持久化設定] ---
 const db = new Dexie("TPC_Offline_ERP");
