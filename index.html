@@ -294,6 +294,22 @@
           <div><label>單號</label><input type="text" id="orderNo" placeholder="請輸入單號" required /></div>
           <div><label>領/退/借用人姓名</label><input type="text" id="personName" required /></div>
         </div>
+
+       <div class="signature-section">
+  <label for="signature-canvas" style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">
+    領/退/借用人簽名 <span style="color: #888; font-weight: normal; font-size: 0.9em;">(非必填)</span>
+  </label>
+  
+  <div style="position: relative; border: 1px solid #ccc; border-radius: 4px; background-color: #fff; width: 100%; max-width: 400px;">
+    <canvas id="signature-canvas" width="400" height="150" style="display: block; cursor: crosshair; touch-action: none;"></canvas>
+    
+    <button type="button" id="clear-btn" style="position: absolute; right: 10px; bottom: 10px; padding: 4px 8px; background: #f0f0f0; border: 1px solid #bbb; border-radius: 4px; cursor: pointer; font-size: 12px;">
+      清除
+    </button>
+  </div>
+
+  <input type="hidden" id="signature-data" name="signature_data">
+</div>
         
         <div class="form-row">
           <div><label>發/收料經辦人</label><input type="text" id="staffName" required /></div>
