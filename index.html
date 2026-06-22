@@ -5,8 +5,500 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>材料管理系統</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+// ====== 強化版庫存核心 (Excel 自動對應 + 評價分類 + 異動扣補) ======
+
+function normalizePartNo(v){
+    if(v===null || v===undefined) return "";
+    let s = String(v).trim().replace(/\s/g,'');
+    // 台電料號固定10碼，避免Excel數字格式造成比對錯誤
+    if(/^\d+$/.test(s)) s = s.padStart(10,'0');
+    return s;
+}
+
+async function handleExcelImport(input){
+    const file = input.files ? input.files[0] : input;
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e){
+        const workbook = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet,{defval:""});
+
+        let count=0;
+        await db.transaction('rw',db.materials,async()=>{
+
+            for(const r of rows){
+
+                const partNo = normalizePartNo(
+                    r["物料編號"] ?? r["料號"] ?? r["物料"]
+                );
+
+                if(!partNo) continue;
+
+                const data={
+                    partNo:partNo,
+                    name:String(r["名稱規範"]||r["品名"]||"").trim(),
+                    rating:String(r["評價"]||0),
+                    unit:String(r["單位"]||""),
+                    location:String(r["儲格"]||""),
+                    erpStock:Number(String(r["庫存量"]||r["庫存"]||0).replace(/,/g,''))||0,
+                    lastUpdate:new Date().toISOString()
+                };
+
+                const old = await db.materials.get(partNo);
+
+                if(old){
+                    await db.materials.update(partNo,data);
+                }else{
+                    await db.materials.add({
+                        ...data,
+                        stock:0
+                    });
+                }
+
+                count++;
+            }
+        });
+
+        await syncInventoryFromERP();
+        await renderData();
+
+        alert(
+        "Excel同步完成\n"+
+        "成功比對料號："+count+" 筆\n"+
+        "目前庫存已重新計算"
+        );
+
+        input.value="";
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+
+// 建立 ERP庫存 + 領退借異動後即時計算
+async function syncInventoryFromERP(){
+
+    const materials = await db.materials.toArray();
+    const logs = await db.changeLog.toArray();
+
+    let map={};
+
+    for(const m of materials){
+
+        const key=m.partNo+"_"+String(m.rating);
+
+        map[key]={
+            pNo:m.partNo,
+            name:m.name,
+            evalType:String(m.rating),
+            init:m.erpStock||0,
+            change:0,
+            total:m.erpStock||0
+        };
+    }
+
+
+    for(const l of logs){
+
+        const key=l.partNo+"_"+String(l.rating||0);
+
+        if(!map[key]){
+            const m=await db.materials.get(l.partNo);
+
+            map[key]={
+                pNo:l.partNo,
+                name:m?.name||"",
+                evalType:String(l.rating||0),
+                init:0,
+                change:0,
+                total:0
+            };
+        }
+
+
+        // 領料/借用扣庫
+        if(l.type==="領料" || l.type==="借用"){
+            map[key].change -= Number(l.amount);
+        }
+
+        // 退料增加
+        if(l.type==="退料"){
+            map[key].change += Number(l.amount);
+        }
+    }
+
+
+    localStorage.setItem(
+        "inventoryCache",
+        JSON.stringify(map)
+    );
+
+    return map;
+}
+
+
+
+function getInventoryMap(){
+    return JSON.parse(localStorage.getItem("inventoryCache")||"{}");
+}
+
+
+
+// 初始庫存改成與ERP同步，不再只存localStorage
+async function setInitialStock(){
+
+    const pNo=normalizePartNo(
+        document.getElementById('stockPartNo').value
+    );
+
+    const qty=Number(
+        document.getElementById('stockInitQty').value
+    );
+
+    const evalType=document.getElementById('stockEvalType').value;
+
+    if(!pNo || isNaN(qty)){
+        alert("料號或數量錯誤");
+        return;
+    }
+
+
+    await db.materials.put({
+        partNo:pNo,
+        name:document.getElementById('stockSelectedName').innerText||"",
+        rating:evalType,
+        erpStock:qty,
+        lastUpdate:new Date().toISOString()
+    });
+
+
+    await syncInventoryFromERP();
+    renderInventoryTable();
+
+    alert("庫存設定完成");
+}
+
+
+
+// 即時庫存表
+async function renderInventoryTable(){
+
+    await syncInventoryFromERP();
+
+    const tbody=document.getElementById('inventoryBody');
+    if(!tbody)return;
+
+    tbody.innerHTML="";
+
+    const filter=
+    document.getElementById('filterStockInput')?.value.toLowerCase()||"";
+
+
+    Object.values(getInventoryMap())
+    .filter(x=>
+        !filter ||
+        x.pNo.includes(filter) ||
+        x.name.includes(filter)
+    )
+    .forEach(x=>{
+
+        tbody.innerHTML+=`
+        <tr>
+        <td>${x.pNo}</td>
+        <td>${x.evalType}</td>
+        <td>${x.name}</td>
+        <td>${x.init}</td>
+        <td>${x.change}</td>
+        <td><b>${x.total}</b></td>
+        </tr>`;
+    });
+
+}
+
+
+
+// Excel 對帳清單
+async function exportReconciliationReport(){
+
+    const logs=await db.changeLog.toArray();
+
+    const today=new Date().toISOString().slice(0,10);
+
+    const data=logs
+    .filter(x=>x.date===today)
+    .map(x=>({
+        日期:x.date,
+        類型:x.type,
+        料號:x.partNo,
+        數量:x.amount,
+        評價:x.rating||"",
+        備註:x.note||""
+    }));
+
+    const ws=XLSX.utils.json_to_sheet(data);
+    const wb=XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        wb,ws,"今日異動"
+    );
+
+    XLSX.writeFile(
+        wb,
+        "今日異動清單.xlsx"
+    );
+}
+
+</script>
+  <script src="https://unpkg.com/dexie/dist/dexie.js">
+// ====== 強化版庫存核心 (Excel 自動對應 + 評價分類 + 異動扣補) ======
+
+function normalizePartNo(v){
+    if(v===null || v===undefined) return "";
+    let s = String(v).trim().replace(/\s/g,'');
+    // 台電料號固定10碼，避免Excel數字格式造成比對錯誤
+    if(/^\d+$/.test(s)) s = s.padStart(10,'0');
+    return s;
+}
+
+async function handleExcelImport(input){
+    const file = input.files ? input.files[0] : input;
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e){
+        const workbook = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet,{defval:""});
+
+        let count=0;
+        await db.transaction('rw',db.materials,async()=>{
+
+            for(const r of rows){
+
+                const partNo = normalizePartNo(
+                    r["物料編號"] ?? r["料號"] ?? r["物料"]
+                );
+
+                if(!partNo) continue;
+
+                const data={
+                    partNo:partNo,
+                    name:String(r["名稱規範"]||r["品名"]||"").trim(),
+                    rating:String(r["評價"]||0),
+                    unit:String(r["單位"]||""),
+                    location:String(r["儲格"]||""),
+                    erpStock:Number(String(r["庫存量"]||r["庫存"]||0).replace(/,/g,''))||0,
+                    lastUpdate:new Date().toISOString()
+                };
+
+                const old = await db.materials.get(partNo);
+
+                if(old){
+                    await db.materials.update(partNo,data);
+                }else{
+                    await db.materials.add({
+                        ...data,
+                        stock:0
+                    });
+                }
+
+                count++;
+            }
+        });
+
+        await syncInventoryFromERP();
+        await renderData();
+
+        alert(
+        "Excel同步完成\n"+
+        "成功比對料號："+count+" 筆\n"+
+        "目前庫存已重新計算"
+        );
+
+        input.value="";
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+
+// 建立 ERP庫存 + 領退借異動後即時計算
+async function syncInventoryFromERP(){
+
+    const materials = await db.materials.toArray();
+    const logs = await db.changeLog.toArray();
+
+    let map={};
+
+    for(const m of materials){
+
+        const key=m.partNo+"_"+String(m.rating);
+
+        map[key]={
+            pNo:m.partNo,
+            name:m.name,
+            evalType:String(m.rating),
+            init:m.erpStock||0,
+            change:0,
+            total:m.erpStock||0
+        };
+    }
+
+
+    for(const l of logs){
+
+        const key=l.partNo+"_"+String(l.rating||0);
+
+        if(!map[key]){
+            const m=await db.materials.get(l.partNo);
+
+            map[key]={
+                pNo:l.partNo,
+                name:m?.name||"",
+                evalType:String(l.rating||0),
+                init:0,
+                change:0,
+                total:0
+            };
+        }
+
+
+        // 領料/借用扣庫
+        if(l.type==="領料" || l.type==="借用"){
+            map[key].change -= Number(l.amount);
+        }
+
+        // 退料增加
+        if(l.type==="退料"){
+            map[key].change += Number(l.amount);
+        }
+    }
+
+
+    localStorage.setItem(
+        "inventoryCache",
+        JSON.stringify(map)
+    );
+
+    return map;
+}
+
+
+
+function getInventoryMap(){
+    return JSON.parse(localStorage.getItem("inventoryCache")||"{}");
+}
+
+
+
+// 初始庫存改成與ERP同步，不再只存localStorage
+async function setInitialStock(){
+
+    const pNo=normalizePartNo(
+        document.getElementById('stockPartNo').value
+    );
+
+    const qty=Number(
+        document.getElementById('stockInitQty').value
+    );
+
+    const evalType=document.getElementById('stockEvalType').value;
+
+    if(!pNo || isNaN(qty)){
+        alert("料號或數量錯誤");
+        return;
+    }
+
+
+    await db.materials.put({
+        partNo:pNo,
+        name:document.getElementById('stockSelectedName').innerText||"",
+        rating:evalType,
+        erpStock:qty,
+        lastUpdate:new Date().toISOString()
+    });
+
+
+    await syncInventoryFromERP();
+    renderInventoryTable();
+
+    alert("庫存設定完成");
+}
+
+
+
+// 即時庫存表
+async function renderInventoryTable(){
+
+    await syncInventoryFromERP();
+
+    const tbody=document.getElementById('inventoryBody');
+    if(!tbody)return;
+
+    tbody.innerHTML="";
+
+    const filter=
+    document.getElementById('filterStockInput')?.value.toLowerCase()||"";
+
+
+    Object.values(getInventoryMap())
+    .filter(x=>
+        !filter ||
+        x.pNo.includes(filter) ||
+        x.name.includes(filter)
+    )
+    .forEach(x=>{
+
+        tbody.innerHTML+=`
+        <tr>
+        <td>${x.pNo}</td>
+        <td>${x.evalType}</td>
+        <td>${x.name}</td>
+        <td>${x.init}</td>
+        <td>${x.change}</td>
+        <td><b>${x.total}</b></td>
+        </tr>`;
+    });
+
+}
+
+
+
+// Excel 對帳清單
+async function exportReconciliationReport(){
+
+    const logs=await db.changeLog.toArray();
+
+    const today=new Date().toISOString().slice(0,10);
+
+    const data=logs
+    .filter(x=>x.date===today)
+    .map(x=>({
+        日期:x.date,
+        類型:x.type,
+        料號:x.partNo,
+        數量:x.amount,
+        評價:x.rating||"",
+        備註:x.note||""
+    }));
+
+    const ws=XLSX.utils.json_to_sheet(data);
+    const wb=XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        wb,ws,"今日異動"
+    );
+
+    XLSX.writeFile(
+        wb,
+        "今日異動清單.xlsx"
+    );
+}
+
+</script>
   
   <style>
     :root {
@@ -1690,6 +2182,252 @@ function toggleSignature(el) {
     let span = document.getElementById('sigName');
     span.hidden = !span.hidden;
 }
+
+// ====== 強化版庫存核心 (Excel 自動對應 + 評價分類 + 異動扣補) ======
+
+function normalizePartNo(v){
+    if(v===null || v===undefined) return "";
+    let s = String(v).trim().replace(/\s/g,'');
+    // 台電料號固定10碼，避免Excel數字格式造成比對錯誤
+    if(/^\d+$/.test(s)) s = s.padStart(10,'0');
+    return s;
+}
+
+async function handleExcelImport(input){
+    const file = input.files ? input.files[0] : input;
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e){
+        const workbook = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet,{defval:""});
+
+        let count=0;
+        await db.transaction('rw',db.materials,async()=>{
+
+            for(const r of rows){
+
+                const partNo = normalizePartNo(
+                    r["物料編號"] ?? r["料號"] ?? r["物料"]
+                );
+
+                if(!partNo) continue;
+
+                const data={
+                    partNo:partNo,
+                    name:String(r["名稱規範"]||r["品名"]||"").trim(),
+                    rating:String(r["評價"]||0),
+                    unit:String(r["單位"]||""),
+                    location:String(r["儲格"]||""),
+                    erpStock:Number(String(r["庫存量"]||r["庫存"]||0).replace(/,/g,''))||0,
+                    lastUpdate:new Date().toISOString()
+                };
+
+                const old = await db.materials.get(partNo);
+
+                if(old){
+                    await db.materials.update(partNo,data);
+                }else{
+                    await db.materials.add({
+                        ...data,
+                        stock:0
+                    });
+                }
+
+                count++;
+            }
+        });
+
+        await syncInventoryFromERP();
+        await renderData();
+
+        alert(
+        "Excel同步完成\n"+
+        "成功比對料號："+count+" 筆\n"+
+        "目前庫存已重新計算"
+        );
+
+        input.value="";
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+
+// 建立 ERP庫存 + 領退借異動後即時計算
+async function syncInventoryFromERP(){
+
+    const materials = await db.materials.toArray();
+    const logs = await db.changeLog.toArray();
+
+    let map={};
+
+    for(const m of materials){
+
+        const key=m.partNo+"_"+String(m.rating);
+
+        map[key]={
+            pNo:m.partNo,
+            name:m.name,
+            evalType:String(m.rating),
+            init:m.erpStock||0,
+            change:0,
+            total:m.erpStock||0
+        };
+    }
+
+
+    for(const l of logs){
+
+        const key=l.partNo+"_"+String(l.rating||0);
+
+        if(!map[key]){
+            const m=await db.materials.get(l.partNo);
+
+            map[key]={
+                pNo:l.partNo,
+                name:m?.name||"",
+                evalType:String(l.rating||0),
+                init:0,
+                change:0,
+                total:0
+            };
+        }
+
+
+        // 領料/借用扣庫
+        if(l.type==="領料" || l.type==="借用"){
+            map[key].change -= Number(l.amount);
+        }
+
+        // 退料增加
+        if(l.type==="退料"){
+            map[key].change += Number(l.amount);
+        }
+    }
+
+
+    localStorage.setItem(
+        "inventoryCache",
+        JSON.stringify(map)
+    );
+
+    return map;
+}
+
+
+
+function getInventoryMap(){
+    return JSON.parse(localStorage.getItem("inventoryCache")||"{}");
+}
+
+
+
+// 初始庫存改成與ERP同步，不再只存localStorage
+async function setInitialStock(){
+
+    const pNo=normalizePartNo(
+        document.getElementById('stockPartNo').value
+    );
+
+    const qty=Number(
+        document.getElementById('stockInitQty').value
+    );
+
+    const evalType=document.getElementById('stockEvalType').value;
+
+    if(!pNo || isNaN(qty)){
+        alert("料號或數量錯誤");
+        return;
+    }
+
+
+    await db.materials.put({
+        partNo:pNo,
+        name:document.getElementById('stockSelectedName').innerText||"",
+        rating:evalType,
+        erpStock:qty,
+        lastUpdate:new Date().toISOString()
+    });
+
+
+    await syncInventoryFromERP();
+    renderInventoryTable();
+
+    alert("庫存設定完成");
+}
+
+
+
+// 即時庫存表
+async function renderInventoryTable(){
+
+    await syncInventoryFromERP();
+
+    const tbody=document.getElementById('inventoryBody');
+    if(!tbody)return;
+
+    tbody.innerHTML="";
+
+    const filter=
+    document.getElementById('filterStockInput')?.value.toLowerCase()||"";
+
+
+    Object.values(getInventoryMap())
+    .filter(x=>
+        !filter ||
+        x.pNo.includes(filter) ||
+        x.name.includes(filter)
+    )
+    .forEach(x=>{
+
+        tbody.innerHTML+=`
+        <tr>
+        <td>${x.pNo}</td>
+        <td>${x.evalType}</td>
+        <td>${x.name}</td>
+        <td>${x.init}</td>
+        <td>${x.change}</td>
+        <td><b>${x.total}</b></td>
+        </tr>`;
+    });
+
+}
+
+
+
+// Excel 對帳清單
+async function exportReconciliationReport(){
+
+    const logs=await db.changeLog.toArray();
+
+    const today=new Date().toISOString().slice(0,10);
+
+    const data=logs
+    .filter(x=>x.date===today)
+    .map(x=>({
+        日期:x.date,
+        類型:x.type,
+        料號:x.partNo,
+        數量:x.amount,
+        評價:x.rating||"",
+        備註:x.note||""
+    }));
+
+    const ws=XLSX.utils.json_to_sheet(data);
+    const wb=XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        wb,ws,"今日異動"
+    );
+
+    XLSX.writeFile(
+        wb,
+        "今日異動清單.xlsx"
+    );
+}
+
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -1799,6 +2537,252 @@ document.addEventListener("DOMContentLoaded", function () {
         signatureInput.value = "";
     });
 });
+
+// ====== 強化版庫存核心 (Excel 自動對應 + 評價分類 + 異動扣補) ======
+
+function normalizePartNo(v){
+    if(v===null || v===undefined) return "";
+    let s = String(v).trim().replace(/\s/g,'');
+    // 台電料號固定10碼，避免Excel數字格式造成比對錯誤
+    if(/^\d+$/.test(s)) s = s.padStart(10,'0');
+    return s;
+}
+
+async function handleExcelImport(input){
+    const file = input.files ? input.files[0] : input;
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e){
+        const workbook = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet,{defval:""});
+
+        let count=0;
+        await db.transaction('rw',db.materials,async()=>{
+
+            for(const r of rows){
+
+                const partNo = normalizePartNo(
+                    r["物料編號"] ?? r["料號"] ?? r["物料"]
+                );
+
+                if(!partNo) continue;
+
+                const data={
+                    partNo:partNo,
+                    name:String(r["名稱規範"]||r["品名"]||"").trim(),
+                    rating:String(r["評價"]||0),
+                    unit:String(r["單位"]||""),
+                    location:String(r["儲格"]||""),
+                    erpStock:Number(String(r["庫存量"]||r["庫存"]||0).replace(/,/g,''))||0,
+                    lastUpdate:new Date().toISOString()
+                };
+
+                const old = await db.materials.get(partNo);
+
+                if(old){
+                    await db.materials.update(partNo,data);
+                }else{
+                    await db.materials.add({
+                        ...data,
+                        stock:0
+                    });
+                }
+
+                count++;
+            }
+        });
+
+        await syncInventoryFromERP();
+        await renderData();
+
+        alert(
+        "Excel同步完成\n"+
+        "成功比對料號："+count+" 筆\n"+
+        "目前庫存已重新計算"
+        );
+
+        input.value="";
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+
+// 建立 ERP庫存 + 領退借異動後即時計算
+async function syncInventoryFromERP(){
+
+    const materials = await db.materials.toArray();
+    const logs = await db.changeLog.toArray();
+
+    let map={};
+
+    for(const m of materials){
+
+        const key=m.partNo+"_"+String(m.rating);
+
+        map[key]={
+            pNo:m.partNo,
+            name:m.name,
+            evalType:String(m.rating),
+            init:m.erpStock||0,
+            change:0,
+            total:m.erpStock||0
+        };
+    }
+
+
+    for(const l of logs){
+
+        const key=l.partNo+"_"+String(l.rating||0);
+
+        if(!map[key]){
+            const m=await db.materials.get(l.partNo);
+
+            map[key]={
+                pNo:l.partNo,
+                name:m?.name||"",
+                evalType:String(l.rating||0),
+                init:0,
+                change:0,
+                total:0
+            };
+        }
+
+
+        // 領料/借用扣庫
+        if(l.type==="領料" || l.type==="借用"){
+            map[key].change -= Number(l.amount);
+        }
+
+        // 退料增加
+        if(l.type==="退料"){
+            map[key].change += Number(l.amount);
+        }
+    }
+
+
+    localStorage.setItem(
+        "inventoryCache",
+        JSON.stringify(map)
+    );
+
+    return map;
+}
+
+
+
+function getInventoryMap(){
+    return JSON.parse(localStorage.getItem("inventoryCache")||"{}");
+}
+
+
+
+// 初始庫存改成與ERP同步，不再只存localStorage
+async function setInitialStock(){
+
+    const pNo=normalizePartNo(
+        document.getElementById('stockPartNo').value
+    );
+
+    const qty=Number(
+        document.getElementById('stockInitQty').value
+    );
+
+    const evalType=document.getElementById('stockEvalType').value;
+
+    if(!pNo || isNaN(qty)){
+        alert("料號或數量錯誤");
+        return;
+    }
+
+
+    await db.materials.put({
+        partNo:pNo,
+        name:document.getElementById('stockSelectedName').innerText||"",
+        rating:evalType,
+        erpStock:qty,
+        lastUpdate:new Date().toISOString()
+    });
+
+
+    await syncInventoryFromERP();
+    renderInventoryTable();
+
+    alert("庫存設定完成");
+}
+
+
+
+// 即時庫存表
+async function renderInventoryTable(){
+
+    await syncInventoryFromERP();
+
+    const tbody=document.getElementById('inventoryBody');
+    if(!tbody)return;
+
+    tbody.innerHTML="";
+
+    const filter=
+    document.getElementById('filterStockInput')?.value.toLowerCase()||"";
+
+
+    Object.values(getInventoryMap())
+    .filter(x=>
+        !filter ||
+        x.pNo.includes(filter) ||
+        x.name.includes(filter)
+    )
+    .forEach(x=>{
+
+        tbody.innerHTML+=`
+        <tr>
+        <td>${x.pNo}</td>
+        <td>${x.evalType}</td>
+        <td>${x.name}</td>
+        <td>${x.init}</td>
+        <td>${x.change}</td>
+        <td><b>${x.total}</b></td>
+        </tr>`;
+    });
+
+}
+
+
+
+// Excel 對帳清單
+async function exportReconciliationReport(){
+
+    const logs=await db.changeLog.toArray();
+
+    const today=new Date().toISOString().slice(0,10);
+
+    const data=logs
+    .filter(x=>x.date===today)
+    .map(x=>({
+        日期:x.date,
+        類型:x.type,
+        料號:x.partNo,
+        數量:x.amount,
+        評價:x.rating||"",
+        備註:x.note||""
+    }));
+
+    const ws=XLSX.utils.json_to_sheet(data);
+    const wb=XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        wb,ws,"今日異動"
+    );
+
+    XLSX.writeFile(
+        wb,
+        "今日異動清單.xlsx"
+    );
+}
+
 </script>  
 </body>
 </html>
