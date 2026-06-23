@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>材料管理系統 - 整合強化版 V4 (完整修正)</title>
+  <title>台電材料管理系統 </title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -193,8 +193,6 @@
       font-weight: 900; padding: 10px; background: #F2E6D9; border: 2px solid #1D3B56; border-radius: 5px; transform: rotate(-5deg); cursor: pointer;
       box-shadow: 3px 3px 0px #1D3B56; }
 
-    .eval-note { font-size: 0.75rem; color: #666; margin-top: 2px; font-weight: normal; }
-
     @media (max-width: 600px) { 
       .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr;
       } 
@@ -264,8 +262,8 @@
 
   <div class="content-wrapper">
     <header>
-      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V4 (完整修正)</div>
-      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型 + 修正庫存表格顯示</div>
+      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統)</div>
+      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;"></div>
     </header>
 
     <div class="nav-tabs">
@@ -323,14 +321,13 @@
           <div class="form-row-3">
             <div><label>數量</label><input type="number" id="qty" min="1" required /></div>
             <div><label>單位</label><input type="text" id="unit" required /></div>
-            <div>
-              <label>評價類型 <span class="eval-note">(0新/1舊/2待修待驗/3資產新/4資產舊)</span></label>
+            <div><label>評價類型</label>
               <select id="evalType">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
+                <option value="0新">0新</option>
+                <option value="1舊">1舊</option>
+                <option value="2待修待驗">2待修待驗</option>
+                <option value="3資產新">3資產新</option>
+                <option value="4資產舊">4資產舊</option>
               </select>
             </div>
           </div>
@@ -402,14 +399,14 @@
             <input type="text" id="stockPartNo" placeholder="輸入或選擇..." oninput="handleUniversalInput(this.value, 'stock')">
         </div>
         
-        <div>
-          <label>評價類型 <span class="eval-note">(0新/1舊/2待修待驗/3資產新/4資產舊)</span></label>
+        <div><label>評價類型</label>
            <select id="stockEvalType">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option           </select>
+                <option value="0新">0新</option>
+                <option value="1舊">1舊</option>
+                <option value="2待修待驗">2待修待驗</option>
+                <option value="3資產新">3資產新</option>
+                <option value="4資產舊">4資產舊</option>
+           </select>
         </div>
         
         <div><label>初始數量</label><input type="number" id="stockInitQty" placeholder="0"></div>
@@ -465,13 +462,13 @@
         </div>
         
         <div style="margin-bottom: 15px;">
-           <label>評價類型 <span class="eval-note">(0新/1舊/2待修待驗/3資產新/4資產舊)</span></label>
+           <label>評價類型</label>
            <select id="transferEvalType" style="background:#fff3cd; border:1px solid #e67e22;">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
+                <option value="0新">0新</option>
+                <option value="1舊">1舊</option>
+                <option value="2待修待驗">2待修待驗</option>
+                <option value="3資產新">3資產新</option>
+                <option value="4資產舊">4資產舊</option>
            </select>
         </div>
 
@@ -728,7 +725,7 @@ const rawData = {
 1404010038	鍍鋅方頭螺栓 SGD290-D M16×P2.0×450㎜ 附單螺帽
 1404050083	鍍鋅方頭螺栓 SS400 5/8"-11UNCx40㎜ 附單螺帽
 1404140000	鍍鋅全牙螺栓 SGD290-D M16xP2.0x450㎜ 附4只方螺帽
-14042300,39	碳鋼擴張螺栓 S45C H內牙外迫式 5/8"φx2-1/2"
+1404230039	碳鋼擴張螺栓 S45C H內牙外迫式 5/8"φx2-1/2"
 1404310021	碳鋼單眼螺栓 SGD290-D M16xP2.0x270㎜ 附雙螺帽
 1404310023	碳鋼單眼螺栓 SGD290-D M16xP2.0×450㎜ 附三螺帽
 1404310026	碳鋼支線螺栓 SGD290-D M16×P2.0×500㎜ 附四螺帽
@@ -745,7 +742,7 @@ const rawData = {
     C: `1028560003	支線標示管 PE 34φxT2㎜xL1.8M
 1030060071	電纜用塑膠帶 T0.178㎜xW19㎜xL20M
 1030060072	電纜用塑膠帶 T0.178㎜xW38㎜xL20M
-1030060074	自融性防水膠帶 T1.7㎜xW38.1㎜xL305㎝
+1030060074	自融性防水膠帶 T1.7㎜xW38㎜xL305㎝
 1030060077	電纜用絕緣膠膏帶 T3.175㎜xW38.1㎜xL152㎝
 1100010005	硬銅絞線(一般用) 22㎜²
 1100010011	硬銅絞線(一般用) 60㎜²
@@ -943,7 +940,7 @@ const rawData = {
 1310040000	電子式電表(用戶) 0.5級 單相三線 110/220V 30A
 1310040001	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A
 1310040002	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A 附記錄型
-1310040003	電子式電表(用戶) 0.5級三相四線120~480V 2.5A雙向計量附記錄型
+1310040003	電子式電表(用戶) 0.5級三相四線120~480V 2.5A雙向計量附記錯型
 1310040005	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A雙向計量智慧型
 1310040006	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A 附記錄型
 1310040007	電子式電表(用戶) 0.5級 三相四線 120~480V 30A
@@ -1227,7 +1224,7 @@ function saveRecordToLS(record) {
 }
 
 // ==========================================
-// 強化版 Excel 匯入 (修正：支援複合主鍵 + 評價類型標準化)
+// 強化版 Excel 匯入 (修正：支援複合主鍵)
 // ==========================================
 
 // 料號正規化函數 (強化版)
@@ -1258,7 +1255,7 @@ async function saveBeforeImportSnapshot(){
     localStorage.setItem('beforeImportStock',JSON.stringify(data));
 }
 
-// 強化版 Excel 匯入主函數 (修正：使用複合主鍵 + 評價類型標準化 + 匯入後更新表格)
+// 強化版 Excel 匯入主函數 (修正：使用複合主鍵)
 async function handleExcelImport(file){
     if(!file) return;
 
@@ -1298,8 +1295,7 @@ async function handleExcelImport(file){
             continue;
         }
 
-        // 修正：標準化評價類型 (從 "3資產新" 提取 "3")
-        let evalType=normalizeEvalType(r[evalCol]);
+        let evalType=String(r[evalCol]||'0');
         let key=partNo+'_'+evalType;
 
         if(duplicate.has(key)){
@@ -1336,9 +1332,6 @@ async function handleExcelImport(file){
     }
 
     await syncInventoryFromERP();
-
-    // 修正：匯入後立即更新庫存表格顯示
-    renderInventoryTable();
 
     // 顯示統計結果
     let msg=`Excel總筆數：${total}\n成功匯入：${success}\n失敗：${fail.length}`;
@@ -1597,7 +1590,7 @@ function filterRecords() {
     let dateTxt = item.querySelector('div').innerText; 
     
     let matchPerson = !pName || txt.includes(pName);
-    let matchStaff = !sName || txt.includes(sName);
+    let matchStaff = !sName || txt.includes(sStaff);
     let matchPart = !pNo || txt.includes(pNo);
     let matchDate = !month || dateTxt.includes(month);
 
@@ -1697,7 +1690,7 @@ function runAnalysis() {
   let totalValidStock = {};
   for(let key in inventory) {
       let item = inventory[key];
-      if (item.evalType === "0" || item.evalType === "3") {
+      if (item.evalType === "0新" || item.evalType === "3資產新") {
           if (!totalValidStock[item.pNo]) totalValidStock[item.pNo] = 0;
           totalValidStock[item.pNo] += item.total;
       }
