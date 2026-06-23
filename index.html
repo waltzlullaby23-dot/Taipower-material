@@ -1240,22 +1240,6 @@ function normalizePartNo(v){
     return s;
 }
 
-// 評價類型標準化函數 (新增：從 "3資產新" 提取 "3")
-function normalizeEvalType(v){
-    if(v===undefined || v===null) return '0';
-    let s=String(v).trim();
-    // 提取第一個數字字元
-    let match = s.match(/\d/);
-    if(match) return match[0];
-    // 如果沒有數字，嘗試對應文字
-    if(s.includes('新') && !s.includes('資產')) return '0';
-    if(s.includes('舊')) return '1';
-    if(s.includes('待修') || s.includes('待驗')) return '2';
-    if(s.includes('資產') && s.includes('新')) return '3';
-    if(s.includes('資產') && s.includes('舊')) return '4';
-    return '0'; // 預設值
-}
-
 // 智慧欄位尋找函數
 function findColumn(row, list){
     let keys=Object.keys(row);
