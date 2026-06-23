@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>材料管理系統 - 整合強化版 V4</title>
+  <title>材料管理系統 - 整合強化版 V4 (修正複合主鍵)</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -262,8 +262,8 @@
 
   <div class="content-wrapper">
     <header>
-      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V4</div>
-      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理</div>
+      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V4 (修正複合主鍵)</div>
+      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型</div>
     </header>
 
     <div class="nav-tabs">
@@ -365,7 +365,7 @@
       
       <div class="import-section" style="margin: 20px 0; border: 2px dashed #217346; padding: 15px; border-radius: 10px; background: #f0fdf4;">
           <h4 style="color:#217346; margin-top:0;">📦 步驟 1：同步系統庫存 (拖放Excel)</h4>
-          <p style="font-size: 0.85rem; color:#666; margin-bottom: 10px;">支援自動掃描所有Sheet、智慧欄位辨識、差異報表自動產出</p>
+          <p style="font-size: 0.85rem; color:#666; margin-bottom: 10px;">支援自動掃描所有Sheet、智慧欄位辨識、差異報表自動產出、同一料號多評價類型</p>
           <input type="file" id="excel-input" accept=".xlsx, .xls" onchange="handleExcelImport(this.files[0])" />
       </div>
 
@@ -605,11 +605,12 @@
 
 <script>
 // ==========================================
-// 資料庫初始化
+// 資料庫初始化 (修正：使用複合主鍵 partNo + rating)
 // ==========================================
-const db = new Dexie("TPC_Offline_ERP_V4");
+const db = new Dexie("TPC_Offline_ERP_V4_Composite");
 db.version(1).stores({
-    materials: 'partNo, name, stock, unit, lastUpdate',
+    // 使用 ++id 作為主鍵，partNo 和 rating 作為索引
+    materials: '++id, partNo, rating, name, stock, unit, lastUpdate',
     changeLog: '++id, date, partNo, type, amount, note' 
 });
 
@@ -731,7 +732,7 @@ const rawData = {
 1404310028	碳鋼支線螺栓 SGD290-D M16×P2.0×300㎜ 附雙螺帽
 1406010030	鍍鋅方墊圈 SS400 M16 18㎜φx4.5㎜ L52xW52㎜
 1808360000	鉻酸鋅糊 1磅裝 材規Y413
-1818050011	棉紗手套 棉紗含棉量100％ L250㎜ 電工用
+1818050011	棉紗手套 棉紗含棉量100％ L250㎜ 經電工用
 1900000069	過載保護熔絲 13.8kV 25kVA 單相亭置式變壓器
 1900000070	過載保護熔絲 6.9kV 25kVA/13.8kV 50kVA 單相亭置式變壓器
 1900000071	過載保護熔絲 6.9kV 50kVA/13.8kV 100kVA單相亭置式變壓器
@@ -924,14 +925,14 @@ const rawData = {
 1002010028	高壓計費用比流器 0.3S級 24kV 50:5A 15VA 乾式
 1002010029	高壓計費用比流器 0.3S級 24kV 100:5A 15VA 乾式
 1002010030	高壓計費用比流器 0.3S級 24kV 200:5A 15VA 乾式
-1002030000	高壓計費用比壓器(非接地型) 0.3S級 12k:110V 25VA 乾式
-1002030002	高壓計費用比壓器(非接地型) 0.3S級 24k:110V 25VA 乾式
+1002030000	高壓計費用比壓器(非接地型) 0.3S級 12kV:110V 25VA 乾式
+1002030002	高壓計費用比壓器(非接地型) 0.3S級 24kV:110V 25VA 乾式
 1002050001	整套型變比器 單相二線0.3級92kV:115/65.7V 200×400:5A
 1002050004	整套型變比器 三相三線 0.3S級 69kV:115V 50×100:5A O型
 1002050005	整套型變比器 三相三線 0.3S級69kV:115V 100×200:5A O型
 1002050007	整套型變比器 三相三線 0.3S級69kV:115V 200×400:5A O型
 1002050008	整套型變比器 三相三線 0.3S級69kV:115V 400×800:5A O型
-1006010012	時控開關 單相 120Vac 10~40A 7天 24時 15分
+1008010012	時控開關 單相 120Vac 10~40A 7天 24時 15分
 1310000008	瓦時計(用戶) 單相三線 110/220V 30A 指針型 附插座(100A)
 1310000010	瓦時計(用戶) 三相三線 220V 2.5A 指針型
 1310000013	瓦時計(用戶) 三相三線 220V 15A 指針型
@@ -939,10 +940,10 @@ const rawData = {
 1310040000	電子式電表(用戶) 0.5級 單相三線 110/220V 30A
 1310040001	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A
 1310040002	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A 附記錄型
-1310040003	電子式電表(用戶) 0.5級三相四線120~480V 2.5A雙向計量附記錄型
+1310040003	電子式電表(用戶) 0.5級三相四線120~480V 2.5A雙向計量附記錯型
 1310040005	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A雙向計量智慧型
-1310040006	電子式電表(用戶) 0.5級 三相四線 120~480V 30A
-1310040007	電子式電表(用戶) 0.5級 三相四線 120~480V 30A 附記錄型
+1310040006	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A 附記錄型
+1310040007	電子式電表(用戶) 0.5級 三相四線 120~480V 30A
 1310040011	電子式電表(用戶) 0.5級單相三線110~220V 30A 雙向計量附記錄型
 1310040012	電子式電表(用戶) 0.5級三相四線120~480V 30A 雙向計量附記錄型
 1310040022	電子式電表(用戶) 0.5級 單相三線 110/220V 30A單向計量附記錄型
@@ -1223,7 +1224,7 @@ function saveRecordToLS(record) {
 }
 
 // ==========================================
-// 強化版 Excel 匯入 (V3 整合)
+// 強化版 Excel 匯入 (修正：支援複合主鍵)
 // ==========================================
 
 // 料號正規化函數 (強化版)
@@ -1254,7 +1255,7 @@ async function saveBeforeImportSnapshot(){
     localStorage.setItem('beforeImportStock',JSON.stringify(data));
 }
 
-// 強化版 Excel 匯入主函數
+// 強化版 Excel 匯入主函數 (修正：使用複合主鍵)
 async function handleExcelImport(file){
     if(!file) return;
 
@@ -1304,15 +1305,28 @@ async function handleExcelImport(file){
 
         duplicate.add(key);
 
-        await db.materials.put({
-            partNo:partNo,
-            name:String(r[nameCol]||''),
-            rating:evalType,
-            erpStock:Number(String(r[stockCol]||0).replace(/,/g,''))||0,
-            unit: '',
-            location: '',
-            lastUpdate: new Date().toISOString()
-        });
+        // 修正：檢查是否已存在相同的 partNo + rating 組合
+        const existing = await db.materials.where('[partNo+rating]').equals([partNo, evalType]).first();
+
+        if(existing){
+            // 更新現有記錄
+            await db.materials.update(existing.id, {
+                name: String(r[nameCol]||''),
+                erpStock: Number(String(r[stockCol]||0).replace(/,/g,''))||0,
+                lastUpdate: new Date().toISOString()
+            });
+        } else {
+            // 新增記錄
+            await db.materials.add({
+                partNo: partNo,
+                rating: evalType,
+                name: String(r[nameCol]||''),
+                erpStock: Number(String(r[stockCol]||0).replace(/,/g,''))||0,
+                unit: '',
+                location: '',
+                lastUpdate: new Date().toISOString()
+            });
+        }
 
         success++;
     }
@@ -1334,7 +1348,7 @@ async function handleExcelImport(file){
     exportStockDifferenceReport();
 }
 
-// 庫存差異報表匯出
+// 庫存差異報表匯出 (修正：使用複合主鍵)
 async function exportStockDifferenceReport(){
     let before=JSON.parse(localStorage.getItem('beforeImportStock')||'[]');
     let after=await db.materials.toArray();
@@ -1366,7 +1380,7 @@ async function exportStockDifferenceReport(){
 }
 
 // ==========================================
-// 庫存同步與計算
+// 庫存同步與計算 (修正：使用複合主鍵)
 // ==========================================
 async function syncInventoryFromERP(){
     const materials = await db.materials.toArray();
@@ -1389,15 +1403,33 @@ async function syncInventoryFromERP(){
     for(const l of logs){
         const key=l.partNo+"_"+String(l.rating||0);
         if(!map[key]){
-            const m=await db.materials.get(l.partNo);
-            map[key]={
-                pNo:l.partNo,
-                name:m?.name||"",
-                evalType:String(l.rating||0),
-                init:0,
-                change:0,
-                total:0
-            };
+            // 修正：若庫存表中無此料號+評價組合，嘗試查詢同名稱的料號
+            const relatedMaterials = await db.materials.where('partNo').equals(l.partNo).toArray();
+            let found = false;
+            for(let m of relatedMaterials) {
+                if(String(m.rating) === String(l.rating || 0)) {
+                    map[key]={
+                        pNo:l.partNo,
+                        name:m.name,
+                        evalType:String(l.rating||0),
+                        init:0,
+                        change:0,
+                        total:0
+                    };
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) {
+                map[key]={
+                    pNo:l.partNo,
+                    name:"",
+                    evalType:String(l.rating||0),
+                    init:0,
+                    change:0,
+                    total:0
+                };
+            }
         }
 
         // 領料/借用扣庫
@@ -1429,13 +1461,25 @@ async function setInitialStock(){
         return;
     }
 
-    await db.materials.put({
-        partNo:pNo,
-        name:document.getElementById('stockSelectedName').innerText||"",
-        rating:evalType,
-        erpStock:qty,
-        lastUpdate:new Date().toISOString()
-    });
+    // 修正：檢查是否已存在相同的 partNo + rating 組合
+    const existing = await db.materials.where('[partNo+rating]').equals([pNo, evalType]).first();
+
+    if(existing){
+        await db.materials.update(existing.id, {
+            name: document.getElementById('stockSelectedName').innerText||"",
+            rating: evalType,
+            erpStock: qty,
+            lastUpdate: new Date().toISOString()
+        });
+    } else {
+        await db.materials.add({
+            partNo: pNo,
+            rating: evalType,
+            name: document.getElementById('stockSelectedName').innerText||"",
+            erpStock: qty,
+            lastUpdate: new Date().toISOString()
+        });
+    }
 
     await syncInventoryFromERP();
     renderInventoryTable();
@@ -1448,7 +1492,8 @@ function deleteInitialStock() {
     if(!pNo) { alert("請先輸入料號"); return; }
     
     if(confirm(`確定要刪除 ${pNo} (${evalType}) 的初始設定嗎？\n(這將使初始值歸零)`)) {
-        db.materials.delete(pNo).then(() => {
+        // 修正：使用複合主鍵刪除
+        db.materials.where('[partNo+rating]').equals([pNo, evalType]).delete().then(() => {
             alert("已刪除該筆初始設定");
             renderInventoryTable();
         });
@@ -1545,7 +1590,7 @@ function filterRecords() {
     let dateTxt = item.querySelector('div').innerText; 
     
     let matchPerson = !pName || txt.includes(pName);
-    let matchStaff = !sName || txt.includes(sName);
+    let matchStaff = !sName || txt.includes(sStaff);
     let matchPart = !pNo || txt.includes(pNo);
     let matchDate = !month || dateTxt.includes(month);
 
