@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>材料管理系統 - 整合強化版 V4 (最終修正)</title>
+  <title>材料管理系統 - 整合強化版 V4 (完整修正)</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -264,8 +264,8 @@
 
   <div class="content-wrapper">
     <header>
-      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V4 (最終修正)</div>
-      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型</div>
+      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V4 (完整修正)</div>
+      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型 + 修正庫存表格顯示</div>
     </header>
 
     <div class="nav-tabs">
@@ -409,8 +409,7 @@
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
-                <option value="4">4</option>
-           </select>
+                <option value="4">4</option           </select>
         </div>
         
         <div><label>初始數量</label><input type="number" id="stockInitQty" placeholder="0"></div>
@@ -611,7 +610,7 @@
 // ==========================================
 // 資料庫初始化 (修正：使用複合主鍵 partNo + rating)
 // ==========================================
-const db = new Dexie("TPC_Offline_ERP_V4_Final");
+const db = new Dexie("TPC_Offline_ERP_V4_Composite");
 db.version(1).stores({
     // 使用 ++id 作為主鍵，partNo 和 rating 作為索引
     materials: '++id, partNo, rating, name, stock, unit, lastUpdate',
@@ -746,7 +745,7 @@ const rawData = {
     C: `1028560003	支線標示管 PE 34φxT2㎜xL1.8M
 1030060071	電纜用塑膠帶 T0.178㎜xW19㎜xL20M
 1030060072	電纜用塑膠帶 T0.178㎜xW38㎜xL20M
-1030060074	自融性防水膠帶 T1.7㎜xW38㎜xL305㎝
+1030060074	自融性防水膠帶 T1.7㎜xW38.1㎜xL305㎝
 1030060077	電纜用絕緣膠膏帶 T3.175㎜xW38.1㎜xL152㎝
 1100010005	硬銅絞線(一般用) 22㎜²
 1100010011	硬銅絞線(一般用) 60㎜²
@@ -1275,7 +1274,7 @@ async function saveBeforeImportSnapshot(){
     localStorage.setItem('beforeImportStock',JSON.stringify(data));
 }
 
-// 強化版 Excel 匯入主函數 (修正：使用複合主鍵 + 評價類型標準化)
+// 強化版 Excel 匯入主函數 (修正：使用複合主鍵 + 評價類型標準化 + 匯入後更新表格)
 async function handleExcelImport(file){
     if(!file) return;
 
@@ -1353,6 +1352,9 @@ async function handleExcelImport(file){
     }
 
     await syncInventoryFromERP();
+
+    // 修正：匯入後立即更新庫存表格顯示
+    renderInventoryTable();
 
     // 顯示統計結果
     let msg=`Excel總筆數：${total}\n成功匯入：${success}\n失敗：${fail.length}`;
