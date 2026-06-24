@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>材料管理系統 - 整合強化版 V5 (完整修正)</title>
+  <title>材料管理系統 - 整合強化版 V5 (完整修正 + 評價類型篩選 + BUG修復)</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -269,8 +269,8 @@
 
   <div class="content-wrapper">
     <header>
-      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V5 (完整修正)</div>
-      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型 + 多材料批次輸入</div>
+      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V5 (完整修正 + 評價類型篩選 + BUG修復)</div>
+      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型 + 多材料批次輸入 + 歷史分析評價類型篩選</div>
     </header>
 
     <div class="nav-tabs">
@@ -578,6 +578,19 @@
                     </select>
                 </div>
             </div>
+            <div class="form-row" style="margin-top: 15px;">
+                <div style="width: 100%;">
+                    <label>選擇評價類型</label>
+                    <select id="historyEvalType" style="width: 100%;">
+                        <option value="">-- 所有評價類型 --</option>
+                        <option value="0新">0新</option>
+                        <option value="1舊">1舊</option>
+                        <option value="2待修待驗">2待修待驗</option>
+                        <option value="3資產新">3資產新</option>
+                        <option value="4資產舊">4資產舊</option>
+                    </select>
+                </div>
+            </div>
             <div id="materialsContainer_history" class="materials-container" style="display:none; margin-bottom:10px;"></div>
             <button class="btn-search" style="width:100%; margin-top:10px;" onclick="calculateUsageHistory()">📊 開始計算用料統計</button>
         </div>
@@ -676,7 +689,7 @@ const rawData = {
 1016000000	螺栓鎖 鎖鉤:5㎜φ 鎖鉤:鋁 螺栓:SS400 栓涵:鎂鋁矽合金
 1016050113	開關箱 屋外型 不鏽鋼 600x400x230㎜ T2㎜
 1028500019	配電線路電桿反光標語片 CNS 4345感壓型第1級 33x12㎝自黏式Y193
-1028500025	配電線路電桿反光貼紙 PVC 40x10㎝ 蜂巢狀/黃色 自黏式
+1028500025	配電線路電桿反光貼紙 PVC 40x10㎜ 蜂巢狀/黃色 自黏式
 1028500186	配電線路電桿反光貼紙 非鍍層立方角錐之微稜鏡反射材料 90x100㎝ 黃黑相間色
 1028500187	配電線路電桿反光貼紙 非鍍層立方角錐之微稜鏡反射材料 90x60㎝ 黃黑相間色
 1028600042	電桿牌 鋁 220×90×T0.511㎜ 藍底白字
@@ -760,7 +773,7 @@ const rawData = {
 1404140000	鍍鋅全牙螺栓 SGD290-D M16xP2.0x450㎜ 附4只方螺帽
 1404230039	碳鋼擴張螺栓 S45C H內牙外迫式 5/8"φx2-1/2"
 1404310021	碳鋼單眼螺栓 SGD290-D M16xP2.0x270㎜ 附雙螺帽
-1404310023	碳鋼單眼螺栓 SGD290-D M16xP2.0×450㎜ 附三螺帽
+1404310023	碳鋼單眼螺栓 SGD290-D M16×P2.0×450㎜ 附三螺帽
 1404310026	碳鋼支線螺栓 SGD290-D M16×P2.0×500㎜ 附四螺帽
 1404310028	碳鋼支線螺栓 SGD290-D M16×P2.0×300㎜ 附雙螺帽
 1406010030	鍍鋅方墊圈 SS400 M16 18㎜φx4.5㎜ L52xW52㎜
@@ -837,7 +850,7 @@ const rawData = {
 1120340001	素材木橫擔 L1200×90×90㎜
 1120340002	素材木橫擔 L1800×90×90㎜
 1120340008	接戶橫木 60×60㎜
-1120340010	輕鋼橫擔 L1800×75×75×T2.3㎜
+1120340001	輕鋼橫擔 L1800×75×75×T2.3㎜
 1120340011	輕鋼橫擔 L2400×75×75×T2.3㎜
 1122050001	電纜保護鐵 小型 SS400 3"φ L2500㎜
 1122200007	電纜固定帶 #1 AWG 鋁合金 25KV AWG #1 單條
@@ -898,10 +911,6 @@ const rawData = {
 1008080005	亭置式氣封開關 三相 24kV 四路 2-600A 2-200A SF6絕緣
 1008080013	亭置式開關 3相 24kV 二路 2-200A SF6絕緣 低碳鋼型
 1008080016	亭置式氣封開關 三相 24kV 四路 3-600A 1-200A SF6絕緣
-1016030015	高壓配電箱 屋外型 鐵 A類x1 單具組
-1016030040	高壓配電箱 屋外型 不鏽鋼 A類x1 單具組
-1016030042	高壓配電箱 屋外型 不鏽鋼 B類J型
-1016030043	高壓配電箱 屋外型 不鏽鋼 B類P型
 1030240010	變壓器絕緣油 35kV以上/2±0.03㎜ 145℃
 1112000015	預力電桿 9m 配電 圓型 B級
 1112000016	預力電桿 10.5m 配電 圓型 B級
@@ -952,14 +961,14 @@ const rawData = {
 1002010017	高壓計費用比流器 0.3S級 12kV 50:5A 15VA  乾式
 1002010018	高壓計費用比流器 0.3S級 12kV 100:5A 15VA  乾式
 1002010019	高壓計費用比流器 0.3S級 12kV 200:5A 15VA  乾式
-1002010020	高壓計費用比流器 0.3S級 12kV 400:5A 15VA  乾式
+1002010020	高壓計費用比流器 0.3S級 12kV 400:5A 15VA 乾式
 1002010025	高壓計費用比流器 0.3S級 24kV 20:5A 15VA 乾式
 1002010027	高壓計費用比流器 0.3S級 24kV 30:5A 15VA 乾式
 1002010028	高壓計費用比流器 0.3S級 24kV 50:5A 15VA 乾式
 1002010029	高壓計費用比流器 0.3S級 24kV 100:5A 15VA 乾式
 1002010030	高壓計費用比流器 0.3S級 24kV 200:5A 15VA 乾式
-1002030000	高壓計費用比壓器(非接地型) 0.3S級 12kV:110V 25VA 乾式
-1002030002	高壓計費用比壓器(非接地型) 0.3S級 24kV:110V 25VA 乾式
+1002030000	高壓計費用比流器(非接地型) 0.3S級 12kV:110V 25VA 乾式
+1002030002	高壓計費用比流器(非接地型) 0.3S級 24kV:110V 25VA 乾式
 1002050001	整套型變比器 單相二線0.3級92kV:115/65.7V 200×400:5A
 1002050004	整套型變比器 三相三線 0.3S級 69kV:115V 50×100:5A O型
 1002050005	整套型變比器 三相三線 0.3S級69kV:115V 100×200:5A O型
@@ -973,7 +982,7 @@ const rawData = {
 1310040000	電子式電表(用戶) 0.5級 單相三線 110/220V 30A
 1310040001	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A
 1310040002	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A 附記錄型
-1310040003	電子式電表(用戶) 0.5級三相四線120~480V 2.5A雙向計量附記錯型
+1310040003	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A雙向計量附記錄型
 1310040005	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A雙向計量智慧型
 1310040006	電子式電表(用戶) 0.5級 三相四線 120~480V 2.5A 附記錄型
 1310040007	電子式電表(用戶) 0.5級 三相四線 120~480V 30A
@@ -1086,7 +1095,7 @@ function selectMaterial(pNo, context) {
   }
 
   if (context === 'input') {
-    document.getElementById('partNoInput').value = pNo;
+    // 移除不存在的 partNoInput 設置，直接顯示數量區塊
     document.getElementById('qtySection').style.display = "block";
   } else if (context === 'stock') {
     document.getElementById('stockPartNo').value = pNo;
@@ -1154,7 +1163,6 @@ function addMaterialToBatch() {
   document.getElementById('unit').value = "";
   selectedPartNo = "";
   selectedName = "";
-  document.getElementById('partNoInput').value = "";
   document.getElementById('qtySection').style.display = "none";
 
   // 詢問是否繼續輸入
@@ -1619,7 +1627,7 @@ async function exportStockDifferenceReport(importDate, operator, partNoSheetMap 
 }
 
 // ==========================================
-// 庫存同步與計算 (修正：使用複合主鍵)
+// 庫存同步與計算 (修正：使用複合主鍵 + 支援所有異動類型)
 // ==========================================
 async function syncInventoryFromERP(){
     const materials = await db.materials.toArray();
@@ -1679,6 +1687,21 @@ async function syncInventoryFromERP(){
         // 退料增加
         if(l.type==="退料"){
             map[key].change += Number(l.amount);
+        }
+
+        // 進貨入庫增加
+        if(l.type==="進貨入庫"){
+            map[key].change += Number(l.amount);
+        }
+
+        // 調撥移入增加
+        if(l.type==="調撥移入" || l.type==="倉庫移入"){
+            map[key].change += Number(l.amount);
+        }
+
+        // 調撥移出扣庫
+        if(l.type==="調撥移出" || l.type==="倉庫移出"){
+            map[key].change -= Number(l.amount);
         }
     }
 
@@ -2041,6 +2064,8 @@ function runAnalysis() {
 
 function calculateUsageHistory() {
     let inputVal = document.getElementById('historySearchInput').value;
+    let evalTypeFilter = document.getElementById('historyEvalType').value;
+    
     if(!selectedPartNo && inputVal.length===10 && materials[inputVal]) {
         selectMaterial(inputVal, 'history');
     }
@@ -2049,7 +2074,15 @@ function calculateUsageHistory() {
     
     document.getElementById('historyResult').style.display = "block";
     let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
-    let targets = records.filter(r => r.partNo === selectedPartNo && r.type === "領料");
+    
+    // 根據評價類型篩選
+    let targets = records.filter(r => {
+        let matchPartNo = r.partNo === selectedPartNo;
+        let matchType = r.type === "領料";
+        let matchEval = !evalTypeFilter || r.evalType === evalTypeFilter;
+        return matchPartNo && matchType && matchEval;
+    });
+    
     let total = 0;
     let monthly = new Array(12).fill(0);
     let quarterly = new Array(4).fill(0);
