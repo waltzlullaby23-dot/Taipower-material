@@ -652,14 +652,57 @@
 // ==========================================
 // 資料庫初始化 (修正：使用複合主鍵 partNo + rating)
 // ==========================================
-const db = new Dexie("TPC_Offline_ERP_V5_Composite");
+// 改名為 V5 以避免與之前使用者的 V4 發生 Schema 衝突
+const db = new Dexie("TPC_Offline_ERP_V5");
 db.version(1).stores({
-    // 使用 ++id 作為主鍵，partNo 和 rating 作為索引
-    materials: '++id, partNo, rating, name, stock, unit, lastUpdate',
-    changeLog: '++id, date, partNo, type, amount, note',
-    importHistory: '++id, fileName, fileHash, importDate, operator'
+    // 關鍵修正：必須定義 [partNo+rating] 作為複合索引，後面 .where('[partNo+rating]') 才會生效
+    materials: '++id, [partNo+rating], partNo, rating, name, erpStock, lastUpdate',
+    changeLog: '++id, partNo, rating, type, amount, date, operator',
+    importHistory: '++id, fileHash, fileName, importDate, operator'
 });
 
+// 初始化日期
+document.getElementById('logDate').valueAsDate = new Date();
+  // ==========================================
+// UI 切換
+// ==========================================
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tabs button').forEach(el => el.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+    document.getElementById(`btn-tab-${tabId}`).classList.add('active');
+    if(tabId === 'inventory') renderInventoryTable();
+}
+
+// ==========================================
+// 核心工具函數
+// ==========================================
+function normalizePartNo(v){
+    if(v===undefined || v===null) return '';
+    let s=String(v).trim();
+    s=s.replace(/\.0$/,'');  
+    s=s.replace(/\s/g,'');   
+    if(/^\d+$/.test(s)) s=s.padStart(10,'0');  
+    return s;
+}
+
+function findColumn(row, list){
+    let keys=Object.keys(row);
+    for(let k of keys){
+        let a=k.replace(/\s/g,'').toLowerCase();
+        for(let n of list){
+            if(a.includes(n.replace(/\s/g,'').toLowerCase())) return k;
+        }
+    }
+    return null;
+}
+
+async function calculateFileHash(file) {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 // ==========================================
 // 原始資料庫 (靜態資料)
 // ==========================================
