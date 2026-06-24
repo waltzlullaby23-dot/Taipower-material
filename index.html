@@ -1384,194 +1384,128 @@ function processWarehouseTransfer() {
 }
 
 // ==========================================
-// 強化版 Excel 匯入 (修正：支援複合主鍵 + 防重複 + 失敗明細匯出)
+// 強化版 Excel 匯入 
 // ==========================================
 
 // 料號正規化函數 (強化版)
-function normalizePartNo(v){
-    if(v===undefined || v===null) return '';
-    let s=String(v).trim();
-    s=s.replace(/\.0$/,'');  // 清除 Excel .0 格式
-    s=s.replace(/\s/g,'');   // 清除所有空白
-    if(/^\d+$/.test(s)) s=s.padStart(10,'0');  // 台電料號固定10碼
-    return s;
+async function handleFileInput() {
+    const fileInput = document.getElementById('excelFile');
+    if (!fileInput.files.length) return alert('請先選擇 Excel 檔案！');
+    
+    const operator = document.getElementById('operatorName').value.trim();
+    if (!operator) return alert('請先輸入操作人姓名！');
+
+    document.getElementById('importStatus').innerText = "處理中，請稍候...";
+    await handleExcelImport(fileInput.files[0], operator);
 }
 
-// 智慧欄位尋找函數
-function findColumn(row, list){
-    let keys=Object.keys(row);
-    for(let k of keys){
-        let a=k.replace(/\s/g,'').toLowerCase();
-        for(let n of list){
-            if(a.includes(n.replace(/\s/g,'').toLowerCase())) return k;
-        }
-    }
-    return null;
-}
-
-// 計算檔案 Hash (用於防重複)
-async function calculateFileHash(file) {
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// 匯入前儲存快照
 async function saveBeforeImportSnapshot(){
-    let data=await db.materials.toArray();
-    localStorage.setItem('beforeImportStock',JSON.stringify(data));
+    let data = await db.materials.toArray();
+    localStorage.setItem('beforeImportStock', JSON.stringify(data));
 }
 
-// 強化版 Excel 匯入主函數 (修正：使用複合主鍵 + 防重複 + 失敗明細)
-async function handleExcelImport(file){
-    if(!file) return;
-
-    // 檢查是否已匯入過此檔案
-    const fileHash = await calculateFileHash(file);
-    const existingImport = await db.importHistory.where('fileHash').equals(fileHash).first();
-    
-    if(existingImport) {
-        const confirmReimport = confirm(`⚠️ 此檔案已於 ${existingImport.importDate} 由操作人 ${existingImport.operator} 匯入過\n\n確定要重新匯入嗎？\n(這將導致重複計算庫存)`);
-        if(!confirmReimport) {
-            document.getElementById('importStatus').innerText = "已取消匯入 (檔案重複)";
-            return;
-        }
-    }
-
-    await saveBeforeImportSnapshot();
-
-    const operator = document.getElementById('operatorName')?.value || "未記錄";
-    const importDate = new Date().toLocaleString('zh-TW');
-
-    const workbook=XLSX.read(await file.arrayBuffer(),{type:'array'});
-    let rows=[];
-    let partNoSheetMap = {}; // 記錄每個料號來自哪個 Sheet
-
-    // 自動掃描所有 Sheet
-    workbook.SheetNames.forEach(name=>{
-        let sheet=workbook.Sheets[name];
-        XLSX.utils.sheet_to_json(sheet,{defval:''})
-        .forEach(r=>{
-            rows.push({...r, _sheetSource: name});
-        });
-    });
-
-    let total=rows.length;
-    let success=0;
-    let fail=[];
-    let duplicate=new Set();
-
-    for(let r of rows){
-        const sheetSource = r._sheetSource || "未知";
+async function handleExcelImport(file, operator){
+    try {
+        const fileHash = await calculateFileHash(file);
+        const existingImport = await db.importHistory.where('fileHash').equals(fileHash).first();
         
-        // 智慧欄位辨識
-        let partCol=findColumn(r,['物料編號','料號','物料','MATNR']);
-        let nameCol=findColumn(r,['名稱','名稱規範','品名']);
-        let stockCol=findColumn(r,['庫存','庫存量','數量']);
-        let evalCol=findColumn(r,['評價','評價類型']);
-
-        let partNo=normalizePartNo(r[partCol]);
-
-        if(!partNo){
-            fail.push({
-                reason:'無料號',
-                sheetSource: sheetSource,
-                rawData: JSON.stringify(r)
-            });
-            continue;
+        if(existingImport) {
+            const confirmReimport = confirm(`⚠️ 此檔案已於 ${existingImport.importDate} 由操作人 ${existingImport.operator} 匯入過\n\n確定要重新匯入嗎？\n(這將導致重複計算庫存)`);
+            if(!confirmReimport) {
+                document.getElementById('importStatus').innerText = "已取消匯入 (檔案重複)";
+                return;
+            }
         }
 
-        if(partNo.length!==10){
-            fail.push({
-                reason:'料號格式錯誤',
-                sheetSource: sheetSource,
-                partNo: partNo,
-                rawData: JSON.stringify(r)
+        await saveBeforeImportSnapshot();
+        const importDate = new Date().toLocaleString('zh-TW');
+
+        const workbook = XLSX.read(await file.arrayBuffer(), {type:'array'});
+        let rows = [];
+        let partNoSheetMap = {}; 
+
+        workbook.SheetNames.forEach(name => {
+            let sheet = workbook.Sheets[name];
+            XLSX.utils.sheet_to_json(sheet, {defval:''}).forEach(r => {
+                rows.push({...r, _sheetSource: name});
             });
-            continue;
+        });
+
+        let total = rows.length;
+        let success = 0;
+        let fail = [];
+        let duplicate = new Set();
+
+        for(let r of rows){
+            const sheetSource = r._sheetSource || "未知";
+            let partCol = findColumn(r, ['物料編號','料號','物料','MATNR']);
+            let nameCol = findColumn(r, ['名稱','名稱規範','品名']);
+            let stockCol = findColumn(r, ['庫存','庫存量','數量']);
+            let evalCol = findColumn(r, ['評價','評價類型']);
+
+            let partNo = normalizePartNo(r[partCol]);
+
+            if(!partNo){
+                fail.push({ reason:'無料號', sheetSource, rawData: JSON.stringify(r) });
+                continue;
+            }
+
+            if(partNo.length !== 10){
+                fail.push({ reason:'料號格式錯誤', sheetSource, partNo, rawData: JSON.stringify(r) });
+                continue;
+            }
+
+            let evalType = String(r[evalCol] || '0');
+            let key = partNo + '_' + evalType;
+
+            if(duplicate.has(key)){
+                fail.push({ reason:'重複資料(同一檔案內)', sheetSource, partNo, evalType });
+                continue;
+            }
+
+            duplicate.add(key);
+            partNoSheetMap[key] = sheetSource;
+
+            const existing = await db.materials.where('[partNo+rating]').equals([partNo, evalType]).first();
+
+            if(existing){
+                await db.materials.update(existing.id, {
+                    name: String(r[nameCol]||''),
+                    erpStock: Number(String(r[stockCol]||0).replace(/,/g,''))||0,
+                    lastUpdate: new Date().toISOString()
+                });
+            } else {
+                await db.materials.add({
+                    partNo: partNo,
+                    rating: evalType,
+                    name: String(r[nameCol]||''),
+                    erpStock: Number(String(r[stockCol]||0).replace(/,/g,''))||0,
+                    lastUpdate: new Date().toISOString()
+                });
+            }
+            success++;
         }
 
-        let evalType=String(r[evalCol]||'0');
-        let key=partNo+'_'+evalType;
+        await db.importHistory.add({
+            fileName: file.name, fileHash, importDate, operator, totalRows: total, successCount: success, failCount: fail.length
+        });
 
-        if(duplicate.has(key)){
-            fail.push({
-                reason:'重複資料(同一檔案內)',
-                sheetSource: sheetSource,
-                partNo: partNo,
-                evalType: evalType
-            });
-            continue;
-        }
+        document.getElementById('importStatus').innerText = `匯入完成 - 成功:${success} 失敗:${fail.length}`;
+        
+        // 匯出錯誤明細與差異報表
+        await exportStockDifferenceReport(importDate, operator, partNoSheetMap);
+        if(fail.length > 0) exportFailureDetails(fail, file.name);
 
-        duplicate.add(key);
+        await renderInventoryTable();
+        alert(`匯入結束。\nExcel總筆數：${total}\n成功：${success}\n失敗：${fail.length}`);
 
-        // 記錄料號來源 Sheet
-        partNoSheetMap[key] = sheetSource;
-
-        // 修正：檢查是否已存在相同的 partNo + rating 組合
-        const existing = await db.materials.where('[partNo+rating]').equals([partNo, evalType]).first();
-
-        if(existing){
-            // 更新現有記錄
-            await db.materials.update(existing.id, {
-                name: String(r[nameCol]||''),
-                erpStock: Number(String(r[stockCol]||0).replace(/,/g,''))||0,
-                lastUpdate: new Date().toISOString()
-            });
-        } else {
-            // 新增記錄
-            await db.materials.add({
-                partNo: partNo,
-                rating: evalType,
-                name: String(r[nameCol]||''),
-                erpStock: Number(String(r[stockCol]||0).replace(/,/g,''))||0,
-                unit: '',
-                location: '',
-                lastUpdate: new Date().toISOString()
-            });
-        }
-
-        success++;
-    }
-
-    // 記錄匯入歷史
-    await db.importHistory.add({
-        fileName: file.name,
-        fileHash: fileHash,
-        importDate: importDate,
-        operator: operator,
-        totalRows: total,
-        successCount: success,
-        failCount: fail.length
-    });
-
-    await syncInventoryFromERP();
-    renderInventoryTable(); // 修正：匯入後立即刷新表格
-
-    // 顯示統計結果
-    let msg=`Excel總筆數：${total}\n成功匯入：${success}\n失敗：${fail.length}`;
-    
-    let reason={};
-    fail.forEach(x=>reason[x.reason]=(reason[x.reason]||0)+1);
-    
-    msg+='\n\n失敗原因：';
-    Object.keys(reason).forEach(x=>msg+=`\n${x}:${reason[x]}筆`);
-    
-    alert(msg);
-    document.getElementById('importStatus').innerText = `匯入完成 - 成功:${success} 失敗:${fail.length}`;
-
-    // 自動產出差異報表
-    exportStockDifferenceReport(importDate, operator, partNoSheetMap);
-
-    // 匯出失敗明細
-    if(fail.length > 0) {
-        exportFailureDetails(fail, file.name);
+    } catch (err) {
+        console.error(err);
+        alert("匯入發生錯誤：" + err.message);
+        document.getElementById('importStatus').innerText = "匯入失敗";
     }
 }
 
-// 匯出失敗明細 Excel
 function exportFailureDetails(failList, fileName) {
     const data = failList.map((item, index) => ({
         '序號': index + 1,
@@ -1581,220 +1515,140 @@ function exportFailureDetails(failList, fileName) {
         '評價類型': item.evalType || '',
         '原始資料': item.rawData || ''
     }));
-
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '匯入失敗明細');
     XLSX.writeFile(wb, `匯入失敗明細_${fileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-// 庫存差異報表匯出 (修正：使用複合主鍵 + 加入日期、操作人、Sheet來源)
 async function exportStockDifferenceReport(importDate, operator, partNoSheetMap = {}){
-    let before=JSON.parse(localStorage.getItem('beforeImportStock')||'[]');
-    let after=await db.materials.toArray();
-    let map={};
+    let beforeStr = localStorage.getItem('beforeImportStock');
+    let before = beforeStr ? JSON.parse(beforeStr) : [];
+    let after = await db.materials.toArray();
+    let map = {};
 
-    before.forEach(x=>{
-        let k=x.partNo+'_'+x.rating;
-        map[k]={料號:x.partNo,評價:x.rating,匯入前:x.erpStock||0,Excel庫存:0};
+    before.forEach(x => {
+        let k = x.partNo + '_' + x.rating;
+        map[k] = {料號:x.partNo, 評價:x.rating, 匯入前:x.erpStock||0, Excel庫存:0};
     });
 
-    after.forEach(x=>{
-        let k=x.partNo+'_'+x.rating;
-        if(!map[k]) map[k]={料號:x.partNo,評價:x.rating,匯入前:0,Excel庫存:0};
-        map[k].Excel庫存=x.erpStock||0;
+    after.forEach(x => {
+        let k = x.partNo + '_' + x.rating;
+        if(!map[k]) map[k] = {料號:x.partNo, 評價:x.rating, 匯入前:0, Excel庫存:0};
+        map[k].Excel庫存 = x.erpStock||0;
     });
 
-    let report=[];
-    Object.values(map).forEach(x=>{
-        let d=x.Excel庫存-x.匯入前;
-        if(d!==0){
+    let report = [];
+    Object.values(map).forEach(x => {
+        let d = x.Excel庫存 - x.匯入前;
+        if(d !== 0){
             let key = x.料號 + '_' + x.評價;
             report.push({
                 ...x, 
-                差異:d,
-                匯入日期: importDate || new Date().toLocaleString('zh-TW'),
-                操作人: operator || "未記錄",
+                差異: d,
+                匯入日期: importDate,
+                操作人: operator,
                 Sheet來源: partNoSheetMap[key] || "未知"
             });
         }
     });
 
-    let ws=XLSX.utils.json_to_sheet(report);
-    let wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,'庫存差異');
-    XLSX.writeFile(wb,'Excel庫存差異報表.xlsx');
+    if(report.length > 0) {
+        let ws = XLSX.utils.json_to_sheet(report);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '庫存差異');
+        XLSX.writeFile(wb, `Excel庫存差異報表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
 }
 
 // ==========================================
-// 庫存同步與計算 (修正：使用複合主鍵 + 支援所有異動類型)
+// 庫存同步與計算 
 // ==========================================
 async function syncInventoryFromERP(){
     const materials = await db.materials.toArray();
     const logs = await db.changeLog.toArray();
+    let map = {};
 
-    let map={};
-
+    // 建立基底庫存
     for(const m of materials){
-        const key=m.partNo+"_"+String(m.rating);
-        map[key]={
-            pNo:m.partNo,
-            name:m.name,
-            evalType:String(m.rating),
-            init:m.erpStock||0,
-            change:0,
-            total:m.erpStock||0
+        const key = m.partNo + "_" + String(m.rating);
+        map[key] = {
+            pNo: m.partNo,
+            name: m.name,
+            evalType: String(m.rating),
+            init: m.erpStock || 0,
+            change: 0,
+            total: 0 // 先預設0
         };
     }
 
+    // 計算異動量
     for(const l of logs){
-        const key=l.partNo+"_"+String(l.rating||0);
+        const key = l.partNo + "_" + String(l.rating||0);
         if(!map[key]){
-            // 修正：若庫存表中無此料號+評價組合，嘗試查詢同名稱的料號
-            const relatedMaterials = await db.materials.where('partNo').equals(l.partNo).toArray();
-            let found = false;
-            for(let m of relatedMaterials) {
-                if(String(m.rating) === String(l.rating || 0)) {
-                    map[key]={
-                        pNo:l.partNo,
-                        name:m.name,
-                        evalType:String(l.rating||0),
-                        init:0,
-                        change:0,
-                        total:0
-                    };
-                    found = true;
-                    break;
-                }
-            }
-            if(!found) {
-                map[key]={
-                    pNo:l.partNo,
-                    name:"",
-                    evalType:String(l.rating||0),
-                    init:0,
-                    change:0,
-                    total:0
-                };
-            }
+            map[key] = {
+                pNo: l.partNo,
+                name: "未知物料(來自異動)",
+                evalType: String(l.rating||0),
+                init: 0,
+                change: 0,
+                total: 0
+            };
         }
 
-        // 領料/借用扣庫
-        if(l.type==="領料" || l.type==="借用"){
-            map[key].change -= Number(l.amount);
-        }
-
-        // 退料增加
-        if(l.type==="退料"){
-            map[key].change += Number(l.amount);
-        }
-
-        // 進貨入庫增加
-        if(l.type==="進貨入庫"){
-            map[key].change += Number(l.amount);
-        }
-
-        // 調撥移入增加
-        if(l.type==="調撥移入" || l.type==="倉庫移入"){
-            map[key].change += Number(l.amount);
-        }
-
-        // 調撥移出扣庫
-        if(l.type==="調撥移出" || l.type==="倉庫移出"){
-            map[key].change -= Number(l.amount);
+        let amt = Number(l.amount) || 0;
+        if(l.type === "領料" || l.type === "借用" || l.type === "調撥移出" || l.type === "倉庫移出"){
+            map[key].change -= amt;
+        } else if(l.type === "退料" || l.type === "進貨入庫" || l.type === "調撥移入" || l.type === "倉庫移入"){
+            map[key].change += amt;
         }
     }
+
+    // 關鍵修正：最後必須把 init 與 change 加總，總庫存才會正確顯示！
+    Object.values(map).forEach(item => {
+        item.total = item.init + item.change;
+    });
 
     localStorage.setItem("inventoryCache", JSON.stringify(map));
     return map;
 }
 
-function getInventoryMap(){
-    return JSON.parse(localStorage.getItem("inventoryCache")||"{}");
-}
+async function renderInventoryTable(){
+    const map = await syncInventoryFromERP();
+    const tbody = document.getElementById('inventoryBody');
+    if(!tbody) return;
 
-async function setInitialStock(){
-    const pNo=normalizePartNo(document.getElementById('stockPartNo').value);
-    const qty=Number(document.getElementById('stockInitQty').value);
-    const evalType=document.getElementById('stockEvalType').value;
+    tbody.innerHTML = "";
+    const filter = (document.getElementById('filterStockInput').value || "").toLowerCase();
 
-    if(!pNo || isNaN(qty)){
-        alert("料號或數量錯誤");
+    const resultList = Object.values(map).filter(x => !filter || x.pNo.includes(filter) || x.name.includes(filter));
+    
+    if(resultList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">暫無資料，或未找到符合條件的項目</td></tr>`;
         return;
     }
 
-    // 修正：檢查是否已存在相同的 partNo + rating 組合
-    const existing = await db.materials.where('[partNo+rating]').equals([pNo, evalType]).first();
-
-    if(existing){
-        await db.materials.update(existing.id, {
-            name: document.getElementById('stockSelectedName').innerText||"",
-            rating: evalType,
-            erpStock: qty,
-            lastUpdate: new Date().toISOString()
-        });
-    } else {
-        await db.materials.add({
-            partNo: pNo,
-            rating: evalType,
-            name: document.getElementById('stockSelectedName').innerText||"",
-            erpStock: qty,
-            lastUpdate: new Date().toISOString()
-        });
-    }
-
-    await syncInventoryFromERP();
-    renderInventoryTable();
-    alert("庫存設定完成");
-}
-
-function deleteInitialStock() {
-    const pNo = document.getElementById('stockPartNo').value;
-    const evalType = document.getElementById('stockEvalType').value;
-    if(!pNo) { alert("請先輸入料號"); return; }
-    
-    if(confirm(`確定要刪除 ${pNo} (${evalType}) 的初始設定嗎？\n(這將使初始值歸零)`)) {
-        // 修正：使用複合主鍵刪除
-        db.materials.where('[partNo+rating]').equals([pNo, evalType]).delete().then(() => {
-            alert("已刪除該筆初始設定");
-            renderInventoryTable();
-        });
-    }
+    resultList.forEach(x => {
+        tbody.innerHTML += `
+        <tr>
+            <td>${x.pNo}</td>
+            <td>${x.evalType}</td>
+            <td>${x.name}</td>
+            <td>${x.init}</td>
+            <td style="color:${x.change < 0 ? 'red' : (x.change > 0 ? 'green' : 'black')}">${x.change}</td>
+            <td><b>${x.total}</b></td>
+        </tr>`;
+    });
 }
 
 function clearAllInitialStock() {
-    if(confirm("⚠️ 警告：這將清空所有材料的「初始庫存」設定！\n(異動紀錄將保留，但計算結果會改變)\n\n確定執行？")) {
+    if(confirm("⚠️ 警告：這將清空所有 Excel 匯入的「初始庫存」設定！\n(確定執行？)")) {
         db.materials.clear().then(() => {
             renderInventoryTable();
             alert("已清空所有初始庫存。");
         });
     }
 }
-
-async function renderInventoryTable(){
-    await syncInventoryFromERP();
-
-    const tbody=document.getElementById('inventoryBody');
-    if(!tbody) return;
-
-    tbody.innerHTML="";
-    const filter=document.getElementById('filterStockInput')?.value.toLowerCase()||"";
-
-    Object.values(getInventoryMap())
-    .filter(x=>!filter || x.pNo.includes(filter) || x.name.includes(filter))
-    .forEach(x=>{
-        tbody.innerHTML+=`
-        <tr>
-        <td>${x.pNo}</td>
-        <td>${x.evalType}</td>
-        <td>${x.name}</td>
-        <td>${x.init}</td>
-        <td>${x.change}</td>
-        <td><b>${x.total}</b></td>
-        </tr>`;
-    });
-}
-
 // ==========================================
 // 資料庫備份與還原
 // ==========================================
