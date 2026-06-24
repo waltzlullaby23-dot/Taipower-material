@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>台電材料管理系統 </title>
+  <title>材料管理系統 - 整合強化版 V5 (完整修正)</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -144,6 +144,8 @@
     }
     .btn-danger { background: var(--danger-red); color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
     }
+    .btn-backup { background: #9b59b6; color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+    }
 
     .materials-container { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px;
       border: 1px solid #ddd; border-radius: 8px; background: white; margin-top: 10px; }
@@ -192,6 +194,11 @@
     .ukiyo-signature { position: fixed; left: 20px; bottom: 20px; z-index: 100;
       font-weight: 900; padding: 10px; background: #F2E6D9; border: 2px solid #1D3B56; border-radius: 5px; transform: rotate(-5deg); cursor: pointer;
       box-shadow: 3px 3px 0px #1D3B56; }
+
+    /* 多材料輸入樣式 */
+    .multi-material-list { margin-top: 15px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f9f9f9; }
+    .multi-material-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: white; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid var(--ukiyo-mid-blue); }
+    .multi-material-count { background: var(--ukiyo-deep-blue); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; margin-right: 10px; }
 
     @media (max-width: 600px) { 
       .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr;
@@ -262,8 +269,8 @@
 
   <div class="content-wrapper">
     <header>
-      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統)</div>
-      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;"></div>
+      <div style="font-weight:900; font-size: 1.5rem; letter-spacing: 2px;">材料管理系統 - 整合強化版 V5 (完整修正)</div>
+      <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">Excel 智慧匯入 + 差異比對報表 + 完整庫存管理 + 支援同一料號多評價類型 + 多材料批次輸入</div>
     </header>
 
     <div class="nav-tabs">
@@ -297,12 +304,12 @@
         <div class="form-row">
           <div><label>發/收料經辦人</label><input type="text" id="staffName" required /></div>
           <div>
-              <label>10位料號搜尋 (自動帶出)</label>
-              <input type="text" id="partNoInput" maxlength="10" placeholder="輸入料號自動選取類別" oninput="handleUniversalInput(this.value, 'input')" />
+              <label>操作人員 (用於報表記錄)</label>
+              <input type="text" id="operatorName" placeholder="請輸入操作人員姓名" required />
           </div>
         </div>
 
-        <h3 class="section-title">貳、材料選擇</h3>
+        <h3 class="section-title">貳、材料選擇 (批次輸入模式 - 最多20筆)</h3>
         <select id="category_input" onchange="renderMaterials('input')">
           <option value="">-- 請選擇材料類別 --</option>
           <option value="A">A 類 (礙子)</option>
@@ -331,7 +338,16 @@
               </select>
             </div>
           </div>
-          <button type="submit" class="btn-save">💾 儲存物料紀錄</button>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-save" style="flex:1; background: linear-gradient(45deg, #3498db, #2980b9);" onclick="addMaterialToBatch()">➕ 加入批次清單</button>
+            <button type="button" class="btn-save" style="flex:1;" onclick="submitBatchRecords()">💾 儲存所有批次物料紀錄</button>
+          </div>
+        </div>
+
+        <div id="batchMaterialList" class="multi-material-list" style="display:none;">
+          <div style="font-weight:bold; margin-bottom:10px; color:var(--ukiyo-deep-blue);">📋 批次清單 (<span id="batchCount">0</span>/20)</div>
+          <div id="batchItems"></div>
+          <button type="button" class="btn-danger" style="width:100%; margin-top:10px;" onclick="clearBatch()">🗑️ 清空批次清單</button>
         </div>
       </form>
     </div>
@@ -365,8 +381,9 @@
       
       <div class="import-section" style="margin: 20px 0; border: 2px dashed #217346; padding: 15px; border-radius: 10px; background: #f0fdf4;">
           <h4 style="color:#217346; margin-top:0;">📦 步驟 1：同步系統庫存 (拖放Excel)</h4>
-          <p style="font-size: 0.85rem; color:#666; margin-bottom: 10px;">支援自動掃描所有Sheet、智慧欄位辨識、差異報表自動產出、同一料號多評價類型</p>
+          <p style="font-size: 0.85rem; color:#666; margin-bottom: 10px;">支援自動掃描所有Sheet、智慧欄位辨識、差異報表自動產出、同一料號多評價類型、防重複匯入</p>
           <input type="file" id="excel-input" accept=".xlsx, .xls" onchange="handleExcelImport(this.files[0])" />
+          <div id="importStatus" style="margin-top:10px; font-size:0.9rem; color:#666;"></div>
       </div>
 
       <div class="report-section" style="margin: 20px 0; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba;">
@@ -375,6 +392,21 @@
           <button onclick="exportReconciliationReport()" style="background:#856404; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">
               匯出今日異動清單 (.xlsx)
           </button>
+      </div>
+
+      <div style="margin: 20px 0; background: #e8f4f8; padding: 15px; border-radius: 10px; border: 1px solid #b8d4e3;">
+          <h4 style="color:#2980b9; margin-top:0;">💾 資料庫備份與還原</h4>
+          <p style="font-size: 0.9em; color:#666; margin-bottom: 10px;">一鍵備份整個材料資料庫，包含初始庫存、異動紀錄等所有資料。</p>
+          <div style="display:flex; gap:10px;">
+            <button onclick="backupDatabase()" style="background:#9b59b6; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">
+                📥 備份資料庫
+            </button>
+            <input type="file" id="restore-input" accept=".json" style="display:none;" onchange="restoreDatabase(this.files[0])" />
+            <button onclick="document.getElementById('restore-input').click()" style="background:#e67e22; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">
+                📤 還原資料庫
+            </button>
+          </div>
+          <div id="backupStatus" style="margin-top:10px; font-size:0.9rem; color:#666;"></div>
       </div>
 
       <div class="form-row-4" style="background: var(--ukiyo-foam); padding:15px; border-radius:10px; margin-bottom:20px;">
@@ -607,11 +639,12 @@
 // ==========================================
 // 資料庫初始化 (修正：使用複合主鍵 partNo + rating)
 // ==========================================
-const db = new Dexie("TPC_Offline_ERP_V4_Composite");
+const db = new Dexie("TPC_Offline_ERP_V5_Composite");
 db.version(1).stores({
     // 使用 ++id 作為主鍵，partNo 和 rating 作為索引
     materials: '++id, partNo, rating, name, stock, unit, lastUpdate',
-    changeLog: '++id, date, partNo, type, amount, note' 
+    changeLog: '++id, date, partNo, type, amount, note',
+    importHistory: '++id, fileName, fileHash, importDate, operator'
 });
 
 // ==========================================
@@ -964,6 +997,8 @@ const rawData = {
 let materials = {};
 let selectedPartNo = "";
 let selectedName = "";
+let batchMaterials = [];
+const MAX_BATCH = 20;
 
 // 初始化解析資料
 function initMaterials() {
@@ -1087,35 +1122,162 @@ function handleUniversalInput(val, context) {
 }
 
 // ==========================================
-// 資料儲存與紀錄管理
+// 批次材料輸入功能 (最多20筆)
 // ==========================================
-document.getElementById('materialForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  
-  const record = {
-    id: Date.now(),
-    date: document.getElementById('mainDate').value,
-    type: document.getElementById('transType').value,
-    orderNo: document.getElementById('orderNo').value,
-    person: document.getElementById('personName').value,
-    staff: document.getElementById('staffName').value,
-    partNo: selectedPartNo || document.getElementById('partNoInput').value,
-    name: selectedName || (materials[document.getElementById('partNoInput').value] ? materials[document.getElementById('partNoInput').value].name : "未知"),
-    qty: parseInt(document.getElementById('qty').value),
-    unit: document.getElementById('unit').value,
-    evalType: document.getElementById('evalType').value,
-    timestamp: new Date().toISOString()
-  };
+function addMaterialToBatch() {
+  if(batchMaterials.length >= MAX_BATCH) {
+    alert(`已達上限 ${MAX_BATCH} 筆，請先儲存批次清單`);
+    return;
+  }
 
-  if(!record.partNo) { alert("請輸入正確料號"); return; }
+  const qty = parseInt(document.getElementById('qty').value);
+  const unit = document.getElementById('unit').value;
+  const evalType = document.getElementById('evalType').value;
+
+  if(!selectedPartNo || !qty || !unit) {
+    alert("請填寫完整材料資訊 (料號、數量、單位)");
+    return;
+  }
+
+  batchMaterials.push({
+    partNo: selectedPartNo,
+    name: selectedName,
+    qty: qty,
+    unit: unit,
+    evalType: evalType
+  });
+
+  renderBatchList();
   
-  saveRecordToLS(record);
-  alert("✅ 紀錄已儲存！");
+  // 清空輸入欄位
+  document.getElementById('qty').value = "";
+  document.getElementById('unit').value = "";
+  selectedPartNo = "";
+  selectedName = "";
+  document.getElementById('partNoInput').value = "";
+  document.getElementById('qtySection').style.display = "none";
+
+  // 詢問是否繼續輸入
+  if(batchMaterials.length < MAX_BATCH) {
+    const continueInput = confirm(`已加入 ${batchMaterials.length} 筆材料\n\n是否繼續輸入下一筆材料？\n(點擊「取消」直接儲存)`);
+    if(!continueInput) {
+      submitBatchRecords();
+    }
+  } else {
+    alert(`已達上限 ${MAX_BATCH} 筆，系統將自動儲存`);
+    submitBatchRecords();
+  }
+}
+
+function renderBatchList() {
+  const container = document.getElementById('batchMaterialList');
+  const itemsDiv = document.getElementById('batchItems');
+  const countSpan = document.getElementById('batchCount');
+  
+  container.style.display = batchMaterials.length > 0 ? "block" : "none";
+  countSpan.innerText = batchMaterials.length;
+  itemsDiv.innerHTML = "";
+
+  batchMaterials.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = "multi-material-item";
+    div.innerHTML = `
+      <div>
+        <span class="multi-material-count">${index + 1}</span>
+        <strong>${item.partNo}</strong> ${item.name}
+      </div>
+      <div>
+        <span style="color:#d35400; font-weight:bold;">${item.qty} ${item.unit}</span>
+        <span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:5px;">${item.evalType}</span>
+        <button onclick="removeBatchItem(${index})" style="margin-left:10px; background:#ffeaea; border:1px solid #ffcccc; color:red; cursor:pointer; padding:2px 8px; border-radius:4px;">×</button>
+      </div>
+    `;
+    itemsDiv.appendChild(div);
+  });
+}
+
+function removeBatchItem(index) {
+  batchMaterials.splice(index, 1);
+  renderBatchList();
+}
+
+function clearBatch() {
+  if(confirm("確定清空批次清單？")) {
+    batchMaterials = [];
+    renderBatchList();
+  }
+}
+
+async function submitBatchRecords() {
+  if(batchMaterials.length === 0) {
+    alert("批次清單為空");
+    return;
+  }
+
+  const date = document.getElementById('mainDate').value;
+  const type = document.getElementById('transType').value;
+  const orderNo = document.getElementById('orderNo').value;
+  const person = document.getElementById('personName').value;
+  const staff = document.getElementById('staffName').value;
+  const operator = document.getElementById('operatorName').value;
+
+  if(!date || !type || !orderNo || !person || !staff || !operator) {
+    alert("請先填寫基本資訊 (日期、作業類型、單號、領用人、經辦人、操作人)");
+    return;
+  }
+
+  for(let item of batchMaterials) {
+    const record = {
+      id: Date.now() + Math.random(),
+      date: date,
+      type: type,
+      orderNo: orderNo,
+      person: person,
+      staff: staff,
+      operator: operator,
+      partNo: item.partNo,
+      name: item.name,
+      qty: item.qty,
+      unit: item.unit,
+      evalType: item.evalType,
+      timestamp: new Date().toISOString()
+    };
+
+    saveRecordToLS(record);
+  }
+
+  alert(`✅ 已成功儲存 ${batchMaterials.length} 筆物料紀錄！`);
+  
+  // 清空批次
+  batchMaterials = [];
+  renderBatchList();
+  
+  // 重置表單
   document.getElementById('materialForm').reset();
   document.getElementById('qtySection').style.display = "none";
   document.getElementById('mainDate').valueAsDate = new Date();
   renderLog();
-});
+  renderInventoryTable();
+}
+
+// ==========================================
+// 資料儲存與紀錄管理
+// ==========================================
+function saveRecordToLS(record) {
+  let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
+  records.push(record);
+  localStorage.setItem('materialRecords', JSON.stringify(records));
+
+  // 寫入 Dexie 作為對帳報表來源
+  db.changeLog.add({
+      date: record.date + " " + new Date().toLocaleTimeString(),
+      partNo: record.partNo,
+      type: record.type,
+      amount: record.qty,
+      rating: record.evalType,
+      note: record.orderNo + " / " + record.person + " / 操作人:" + (record.operator || "未記錄")
+  }).catch(e => console.error("Dexie 寫入失敗", e));
+}
 
 function processStockIn() {
     const pNo = document.getElementById('transferPartNo').value;
@@ -1124,6 +1286,7 @@ function processStockIn() {
     const date = document.getElementById('transferDate').value;
     const orderNo = document.getElementById('transferOrderNo').value;
     const evalType = document.getElementById('transferEvalType').value;
+    const operator = document.getElementById('operatorName')?.value || staff;
 
     if(!pNo || !qty || !staff) { alert("請填寫完整入庫資訊"); return; }
     if(!materials[pNo]) { alert("料號不存在"); return; }
@@ -1135,6 +1298,7 @@ function processStockIn() {
         orderNo: orderNo || "N/A",
         person: "廠商/總處",
         staff: staff,
+        operator: operator,
         partNo: pNo,
         name: materials[pNo].name,
         qty: qty, 
@@ -1156,6 +1320,7 @@ function processTransfer() {
     const date = document.getElementById('transferDate').value;
     const orderNo = document.getElementById('transferOrderNo').value;
     const evalType = document.getElementById('transferEvalType').value;
+    const operator = document.getElementById('operatorName')?.value || staff;
 
     if(!pNo || !qty || !staff || !target) { alert("請填寫完整調撥資訊"); return; }
 
@@ -1166,6 +1331,7 @@ function processTransfer() {
         orderNo: orderNo || "N/A",
         person: target,
         staff: staff,
+        operator: operator,
         partNo: pNo,
         name: materials[pNo] ? materials[pNo].name : "",
         qty: qty,
@@ -1186,6 +1352,7 @@ function processWarehouseTransfer() {
     const type = document.getElementById('warehouseType').value;
     const date = document.getElementById('transferDate').value;
     const evalType = document.getElementById('transferEvalType').value;
+    const operator = document.getElementById('operatorName')?.value || staff;
     if(!pNo || !qty) { alert("請填寫移轉資訊"); return; }
 
     const record = {
@@ -1195,6 +1362,7 @@ function processWarehouseTransfer() {
         orderNo: "內部移轉",
         person: warehouse,
         staff: staff,
+        operator: operator,
         partNo: pNo,
         name: materials[pNo] ? materials[pNo].name : "",
         qty: qty,
@@ -1207,24 +1375,8 @@ function processWarehouseTransfer() {
     renderLog();
 }
 
-function saveRecordToLS(record) {
-  let records = JSON.parse(localStorage.getItem('materialRecords')) || [];
-  records.push(record);
-  localStorage.setItem('materialRecords', JSON.stringify(records));
-
-  // 寫入 Dexie 作為對帳報表來源
-  db.changeLog.add({
-      date: record.date + " " + new Date().toLocaleTimeString(),
-      partNo: record.partNo,
-      type: record.type,
-      amount: record.qty,
-      rating: record.evalType,
-      note: record.orderNo + " / " + record.person
-  }).catch(e => console.error("Dexie 寫入失敗", e));
-}
-
 // ==========================================
-// 強化版 Excel 匯入 (修正：支援複合主鍵)
+// 強化版 Excel 匯入 (修正：支援複合主鍵 + 防重複 + 失敗明細匯出)
 // ==========================================
 
 // 料號正規化函數 (強化版)
@@ -1249,26 +1401,52 @@ function findColumn(row, list){
     return null;
 }
 
+// 計算檔案 Hash (用於防重複)
+async function calculateFileHash(file) {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // 匯入前儲存快照
 async function saveBeforeImportSnapshot(){
     let data=await db.materials.toArray();
     localStorage.setItem('beforeImportStock',JSON.stringify(data));
 }
 
-// 強化版 Excel 匯入主函數 (修正：使用複合主鍵)
+// 強化版 Excel 匯入主函數 (修正：使用複合主鍵 + 防重複 + 失敗明細)
 async function handleExcelImport(file){
     if(!file) return;
 
+    // 檢查是否已匯入過此檔案
+    const fileHash = await calculateFileHash(file);
+    const existingImport = await db.importHistory.where('fileHash').equals(fileHash).first();
+    
+    if(existingImport) {
+        const confirmReimport = confirm(`⚠️ 此檔案已於 ${existingImport.importDate} 由操作人 ${existingImport.operator} 匯入過\n\n確定要重新匯入嗎？\n(這將導致重複計算庫存)`);
+        if(!confirmReimport) {
+            document.getElementById('importStatus').innerText = "已取消匯入 (檔案重複)";
+            return;
+        }
+    }
+
     await saveBeforeImportSnapshot();
+
+    const operator = document.getElementById('operatorName')?.value || "未記錄";
+    const importDate = new Date().toLocaleString('zh-TW');
 
     const workbook=XLSX.read(await file.arrayBuffer(),{type:'array'});
     let rows=[];
+    let partNoSheetMap = {}; // 記錄每個料號來自哪個 Sheet
 
     // 自動掃描所有 Sheet
     workbook.SheetNames.forEach(name=>{
         let sheet=workbook.Sheets[name];
         XLSX.utils.sheet_to_json(sheet,{defval:''})
-        .forEach(r=>rows.push(r));
+        .forEach(r=>{
+            rows.push({...r, _sheetSource: name});
+        });
     });
 
     let total=rows.length;
@@ -1277,6 +1455,8 @@ async function handleExcelImport(file){
     let duplicate=new Set();
 
     for(let r of rows){
+        const sheetSource = r._sheetSource || "未知";
+        
         // 智慧欄位辨識
         let partCol=findColumn(r,['物料編號','料號','物料','MATNR']);
         let nameCol=findColumn(r,['名稱','名稱規範','品名']);
@@ -1286,12 +1466,21 @@ async function handleExcelImport(file){
         let partNo=normalizePartNo(r[partCol]);
 
         if(!partNo){
-            fail.push({reason:'無料號'});
+            fail.push({
+                reason:'無料號',
+                sheetSource: sheetSource,
+                rawData: JSON.stringify(r)
+            });
             continue;
         }
 
         if(partNo.length!==10){
-            fail.push({reason:'料號格式錯誤'});
+            fail.push({
+                reason:'料號格式錯誤',
+                sheetSource: sheetSource,
+                partNo: partNo,
+                rawData: JSON.stringify(r)
+            });
             continue;
         }
 
@@ -1299,11 +1488,19 @@ async function handleExcelImport(file){
         let key=partNo+'_'+evalType;
 
         if(duplicate.has(key)){
-            fail.push({reason:'重複資料'});
+            fail.push({
+                reason:'重複資料(同一檔案內)',
+                sheetSource: sheetSource,
+                partNo: partNo,
+                evalType: evalType
+            });
             continue;
         }
 
         duplicate.add(key);
+
+        // 記錄料號來源 Sheet
+        partNoSheetMap[key] = sheetSource;
 
         // 修正：檢查是否已存在相同的 partNo + rating 組合
         const existing = await db.materials.where('[partNo+rating]').equals([partNo, evalType]).first();
@@ -1331,7 +1528,19 @@ async function handleExcelImport(file){
         success++;
     }
 
+    // 記錄匯入歷史
+    await db.importHistory.add({
+        fileName: file.name,
+        fileHash: fileHash,
+        importDate: importDate,
+        operator: operator,
+        totalRows: total,
+        successCount: success,
+        failCount: fail.length
+    });
+
     await syncInventoryFromERP();
+    renderInventoryTable(); // 修正：匯入後立即刷新表格
 
     // 顯示統計結果
     let msg=`Excel總筆數：${total}\n成功匯入：${success}\n失敗：${fail.length}`;
@@ -1343,13 +1552,36 @@ async function handleExcelImport(file){
     Object.keys(reason).forEach(x=>msg+=`\n${x}:${reason[x]}筆`);
     
     alert(msg);
+    document.getElementById('importStatus').innerText = `匯入完成 - 成功:${success} 失敗:${fail.length}`;
 
     // 自動產出差異報表
-    exportStockDifferenceReport();
+    exportStockDifferenceReport(importDate, operator, partNoSheetMap);
+
+    // 匯出失敗明細
+    if(fail.length > 0) {
+        exportFailureDetails(fail, file.name);
+    }
 }
 
-// 庫存差異報表匯出 (修正：使用複合主鍵)
-async function exportStockDifferenceReport(){
+// 匯出失敗明細 Excel
+function exportFailureDetails(failList, fileName) {
+    const data = failList.map((item, index) => ({
+        '序號': index + 1,
+        '失敗原因': item.reason,
+        'Sheet來源': item.sheetSource,
+        '料號': item.partNo || '',
+        '評價類型': item.evalType || '',
+        '原始資料': item.rawData || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '匯入失敗明細');
+    XLSX.writeFile(wb, `匯入失敗明細_${fileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// 庫存差異報表匯出 (修正：使用複合主鍵 + 加入日期、操作人、Sheet來源)
+async function exportStockDifferenceReport(importDate, operator, partNoSheetMap = {}){
     let before=JSON.parse(localStorage.getItem('beforeImportStock')||'[]');
     let after=await db.materials.toArray();
     let map={};
@@ -1369,7 +1601,14 @@ async function exportStockDifferenceReport(){
     Object.values(map).forEach(x=>{
         let d=x.Excel庫存-x.匯入前;
         if(d!==0){
-            report.push({...x,差異:d});
+            let key = x.料號 + '_' + x.評價;
+            report.push({
+                ...x, 
+                差異:d,
+                匯入日期: importDate || new Date().toLocaleString('zh-TW'),
+                操作人: operator || "未記錄",
+                Sheet來源: partNoSheetMap[key] || "未知"
+            });
         }
     });
 
@@ -1534,6 +1773,90 @@ async function renderInventoryTable(){
 }
 
 // ==========================================
+// 資料庫備份與還原
+// ==========================================
+async function backupDatabase() {
+    try {
+        const backupData = {
+            materials: await db.materials.toArray(),
+            changeLog: await db.changeLog.toArray(),
+            importHistory: await db.importHistory.toArray(),
+            materialRecords: JSON.parse(localStorage.getItem('materialRecords')) || [],
+            safeStock: JSON.parse(localStorage.getItem('safeStock')) || {},
+            inventoryCache: JSON.parse(localStorage.getItem('inventoryCache')) || {},
+            backupDate: new Date().toISOString(),
+            version: "V5"
+        };
+
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `材料管理系統備份_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        document.getElementById('backupStatus').innerText = "✅ 備份完成";
+        alert("✅ 資料庫備份成功！");
+    } catch (error) {
+        console.error("備份失敗:", error);
+        document.getElementById('backupStatus').innerText = "❌ 備份失敗";
+        alert("❌ 備份失敗：" + error.message);
+    }
+}
+
+async function restoreDatabase(file) {
+    if(!file) return;
+
+    if(!confirm("⚠️ 警告：還原將覆蓋現有資料！\n\n確定要還原此備份檔嗎？")) {
+        return;
+    }
+
+    try {
+        const text = await file.text();
+        const backupData = JSON.parse(text);
+
+        // 清空現有資料
+        await db.materials.clear();
+        await db.changeLog.clear();
+        await db.importHistory.clear();
+
+        // 還原資料
+        if(backupData.materials && backupData.materials.length > 0) {
+            await db.materials.bulkAdd(backupData.materials);
+        }
+        if(backupData.changeLog && backupData.changeLog.length > 0) {
+            await db.changeLog.bulkAdd(backupData.changeLog);
+        }
+        if(backupData.importHistory && backupData.importHistory.length > 0) {
+            await db.importHistory.bulkAdd(backupData.importHistory);
+        }
+
+        // 還原 localStorage
+        if(backupData.materialRecords) {
+            localStorage.setItem('materialRecords', JSON.stringify(backupData.materialRecords));
+        }
+        if(backupData.safeStock) {
+            localStorage.setItem('safeStock', JSON.stringify(backupData.safeStock));
+        }
+        if(backupData.inventoryCache) {
+            localStorage.setItem('inventoryCache', JSON.stringify(backupData.inventoryCache));
+        }
+
+        document.getElementById('backupStatus').innerText = "✅ 還原完成";
+        alert("✅ 資料庫還原成功！\n\n備份日期: " + (backupData.backupDate || "未知"));
+
+        // 刷新介面
+        renderLog();
+        renderInventoryTable();
+    } catch (error) {
+        console.error("還原失敗:", error);
+        document.getElementById('backupStatus').innerText = "❌ 還原失敗";
+        alert("❌ 還原失敗：" + error.message);
+    }
+}
+
+// ==========================================
 // 歷史紀錄管理
 // ==========================================
 function renderLog() {
@@ -1554,7 +1877,7 @@ function renderLog() {
       </div>
       <div style="margin-top:5px; color:#555;">
         數量: <span style="color:#d35400; font-weight:bold;">${r.qty} ${r.unit}</span> ${evalDisplay} | 
-        對象: ${r.person} | 經辦: ${r.staff} | 單號: ${r.orderNo}
+        對象: ${r.person} | 經辦: ${r.staff} ${r.operator ? `| 操作人: ${r.operator}` : ''} | 單號: ${r.orderNo}
       </div>
     `;
     list.appendChild(item);
