@@ -653,7 +653,7 @@
 // 資料庫初始化 (修正：使用複合主鍵 partNo + rating)
 // ==========================================
 // 改名為 V5 以避免與之前使用者的 V4 發生 Schema 衝突
-const db = new Dexie("TPC_Offline_ERP_V5");
+const db = new Dexie
 db.version(1).stores({
     // 關鍵修正：必須定義 [partNo+rating] 作為複合索引，後面 .where('[partNo+rating]') 才會生效
     materials: '++id, [partNo+rating], partNo, rating, name, erpStock, lastUpdate',
